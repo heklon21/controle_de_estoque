@@ -1,0 +1,187 @@
+@page "/"
+
+<PageTitle>Controle de Estoque</PageTitle>
+
+<section class="page-heading">
+    <div>
+        <p class="eyebrow">INVENTÁRIO</p>
+        <h1>Controle de estoque</h1>
+        <p class="subtitle">Cadastre seus insumos e acompanhe o valor total do estoque.</p>
+    </div>
+</section>
+
+<section class="summary-card" aria-label="Resumo do estoque">
+    <div class="summary-icon" aria-hidden="true">R$</div>
+    <div>
+        <p class="summary-label">Saldo total em estoque</p>
+        <p class="summary-value">@FormatCurrency(TotalValue)</p>
+    </div>
+    <div class="summary-count">
+        <strong>@_items.Count</strong>
+        <span>@(_items.Count == 1 ? "insumo cadastrado" : "insumos cadastrados")</span>
+    </div>
+</section>
+
+<div class="content-grid">
+    <section class="panel form-panel">
+        <div class="panel-heading">
+            <div class="panel-icon" aria-hidden="true">+</div>
+            <div>
+                <h2>Adicionar insumo</h2>
+                <p>Preencha os dados do item.</p>
+            </div>
+        </div>
+
+        <EditForm Model="_form" OnValidSubmit="AddItem" class="stock-form">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div class="field">
+                <label for="item-name">Nome do insumo</label>
+                <InputText id="item-name" @bind-Value="_form.Name" placeholder="Ex.: Papel A4" />
+                <ValidationMessage For="() => _form.Name" />
+            </div>
+
+            <div class="field">
+                <label for="item-value">Valor unitário</label>
+                <div class="input-with-prefix">
+                    <span aria-hidden="true">R$</span>
+                    <InputNumber id="item-value" @bind-Value="_form.Value" min="0" step="0.01" />
+                </div>
+                <ValidationMessage For="() => _form.Value" />
+            </div>
+
+            <div class="field">
+                <label for="item-quantity">Quantidade</label>
+                <InputNumber id="item-quantity" @bind-Value="_form.Quantity" min="1" step="1" />
+                <ValidationMessage For="() => _form.Quantity" />
+            </div>
+
+            <button class="button button-primary" type="submit">Adicionar ao estoque</button>
+        </EditForm>
+    </section>
+
+    <section class="panel inventory-panel">
+        <div class="panel-heading inventory-heading">
+            <div>
+                <h2>Itens cadastrados</h2>
+                <p>O saldo considera o valor unitário multiplicado pela quantidade.</p>
+            </div>
+        </div>
+
+        @if (_items.Count == 0)
+        {
+            <div class="empty-state">
+                <div class="empty-icon" aria-hidden="true">□</div>
+                <strong>Nenhum insumo por aqui</strong>
+                <p>Adicione seu primeiro item usando o formulário.</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th scope="col">Insumo</th>
+                            <th scope="col">Valor unitário</th>
+                            <th scope="col">Quantidade</th>
+                            <th scope="col">Subtotal</th>
+                            <th scope="col"><span class="visually-hidden">Ações</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in _items)
+                        {
+                            <tr @key="item.Id">
+                                <td class="item-name">@item.Name</td>
+                                <td>@FormatCurrency(item.Value)</td>
+                                <td>
+                                    <div class="quantity-control" aria-label="@($"Quantidade de {item.Name}")">
+                                        <button class="quantity-button"
+                                                type="button"
+                                                aria-label="@($"Diminuir quantidade de {item.Name}")"
+                                                disabled="@(item.Quantity <= 1)"
+                                                @onclick="() => ChangeQuantity(item, -1)">
+                                            −
+                                        </button>
+                                        <span class="quantity-value" aria-live="polite">@item.Quantity</span>
+                                        <button class="quantity-button"
+                                                type="button"
+                                                aria-label="@($"Aumentar quantidade de {item.Name}")"
+                                                @onclick="() => ChangeQuantity(item, 1)">
+                                            +
+                                        </button>
+                                    </div>
+                                </td>
+                                <td class="item-subtotal">@FormatCurrency(item.Value * item.Quantity)</td>
+                                <td class="action-cell">
+                                    <button class="button-remove"
+                                            type="button"
+                                            aria-label="@($"Remover {item.Name}")"
+                                            @onclick="() => RemoveItem(item.Id)">
+                                        Remover
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <th scope="row" colspan="3">Saldo total</th>
+                            <td colspan="2">@FormatCurrency(TotalValue)</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        }
+    </section>
+</div>
+
+@code {
+    private readonly List<StockItem> _items = [];
+    private StockItemForm _form = new();
+    private decimal TotalValue => _items.Sum(item => item.Value * item.Quantity);
+
+    private static string FormatCurrency(decimal value) =>
+        value.ToString("C", CultureInfo.GetCultureInfo("pt-BR"));
+
+    private void AddItem()
+    {
+        _items.Add(new StockItem(Guid.NewGuid(), _form.Name.Trim(), _form.Value, _form.Quantity));
+        _form = new StockItemForm();
+    }
+
+    private void ChangeQuantity(StockItem item, int change)
+    {
+        var index = _items.FindIndex(existing => existing.Id == item.Id);
+        if (index < 0)
+        {
+            return;
+        }
+
+        var quantity = (long)_items[index].Quantity + change;
+        if (quantity >= 1 && quantity <= int.MaxValue)
+        {
+            _items[index] = _items[index] with { Quantity = (int)quantity };
+        }
+    }
+
+    private void RemoveItem(Guid id) =>
+        _items.RemoveAll(item => item.Id == id);
+
+    private sealed record StockItem(Guid Id, string Name, decimal Value, int Quantity);
+
+    private sealed class StockItemForm
+    {
+        [Required(ErrorMessage = "Informe o nome do insumo.")]
+        [StringLength(100, ErrorMessage = "O nome deve ter no máximo 100 caracteres.")]
+        public string Name { get; set; } = string.Empty;
+
+        [Range(typeof(decimal), "0", "999999999", ErrorMessage = "Informe um valor igual ou maior que zero.")]
+        public decimal Value { get; set; }
+
+        [Range(1, int.MaxValue, ErrorMessage = "A quantidade deve ser pelo menos 1.")]
+        public int Quantity { get; set; } = 1;
+    }
+}
