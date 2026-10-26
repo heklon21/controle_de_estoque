@@ -1,6 +1,8 @@
 # Controle de Estoque
 
-Aplicação simples em Blazor para cadastrar insumos, informar valor unitário e quantidade e acompanhar o saldo total do estoque.
+Aplicação simples em Blazor para cadastrar insumos e categorias, controlar quantidades e registrar movimentações de estoque.
+
+Insumos novos começam com quantidade zero. Ajuste o saldo em **Estoque Total** ou registre entradas e saídas em **Movimentações de estoque**.
 
 ## Executar
 

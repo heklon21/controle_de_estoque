@@ -1,10 +1,13 @@
 using ControleEstoque.Components;
+using ControleEstoque.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services
     .AddRazorComponents()
     .AddInteractiveServerComponents();
+builder.Services.AddScoped<StockInventory>();
+builder.Services.AddScoped<StockMovementService>();
 
 var app = builder.Build();
 

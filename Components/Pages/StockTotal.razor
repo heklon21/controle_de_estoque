@@ -1,0 +1,204 @@
+@page "/estoque-total"
+
+@inject StockInventory Inventory
+@inject StockMovementService MovementService
+
+<PageTitle>Estoque Total</PageTitle>
+
+<section class="page-heading">
+    <div>
+        <p class="eyebrow">CONTROLE DE ESTOQUE</p>
+        <h1>Estoque Total</h1>
+        <p class="subtitle">Consulte os insumos ordenados pelo valor total em estoque.</p>
+    </div>
+</section>
+
+<section class="panel stock-total-filters" aria-label="Filtros do estoque">
+    <div class="stock-filter-fields">
+        <div class="field">
+            <label for="stock-start-date">Movimentações a partir de</label>
+            <InputDate id="stock-start-date" @bind-Value="_startDate" />
+        </div>
+        <div class="field">
+            <label for="stock-end-date">Movimentações até</label>
+            <InputDate id="stock-end-date" @bind-Value="_endDate" />
+        </div>
+        <div class="field">
+            <label for="stock-category">Categoria</label>
+            <InputSelect id="stock-category" @bind-Value="_categoryId">
+                <option value="">Todas as categorias</option>
+                @foreach (var category in Inventory.Categories)
+                {
+                    <option value="@category.Id">@category.Name</option>
+                }
+            </InputSelect>
+        </div>
+        <div class="field stock-search-field">
+            <label for="stock-search">Buscar insumo</label>
+            <InputText id="stock-search"
+                       @bind-Value="_search"
+                       @bind-Value:event="oninput"
+                       placeholder="Digite o nome do insumo" />
+        </div>
+        <button class="button button-secondary clear-stock-filters"
+                type="button"
+                disabled="@(!HasFilters)"
+                @onclick="ClearFilters">
+            Limpar filtros
+        </button>
+    </div>
+    @if (_startDate is DateTime startDate && _endDate is DateTime endDate && startDate.Date > endDate.Date)
+    {
+        <p class="form-error stock-filter-error" role="alert">
+            A data inicial deve ser anterior ou igual à data final.
+        </p>
+    }
+    <p class="stock-filter-hint">O período considera as datas das movimentações; os saldos exibidos são atuais.</p>
+</section>
+
+<section class="summary-card stock-total-summary" aria-label="Valor total dos insumos filtrados">
+    <div class="summary-icon" aria-hidden="true">R$</div>
+    <div>
+        <p class="summary-label">Valor total dos insumos filtrados</p>
+        <p class="summary-value">@FormatCurrency(FilteredItems.Sum(item => item.Value * item.Quantity))</p>
+    </div>
+    <div class="summary-count">
+        <strong>@FilteredItems.Count</strong>
+        <span>@(FilteredItems.Count == 1 ? "insumo encontrado" : "insumos encontrados")</span>
+    </div>
+</section>
+
+<section class="panel inventory-panel stock-total-panel">
+    <div class="panel-heading inventory-heading">
+        <div>
+            <h2>Itens em estoque</h2>
+            <p>Ordenados do maior para o menor valor total.</p>
+        </div>
+        <span class="stock-total-count">
+            @FilteredItems.Count de @Inventory.Items.Count
+        </span>
+    </div>
+
+    @if (FilteredItems.Count == 0)
+    {
+        <div class="empty-state">
+            <div class="empty-icon" aria-hidden="true">□</div>
+            @if (Inventory.Items.Count == 0)
+            {
+                <strong>Nenhum insumo cadastrado</strong>
+                <p>Cadastre os insumos para acompanhar o estoque.</p>
+                <a class="button button-primary stock-total-link" href="/insumos">Cadastrar insumo</a>
+            }
+            else if (HasDateRange && !HasValidDateRange)
+            {
+                <strong>Período inválido</strong>
+                <p>Corrija as datas para consultar os insumos movimentados.</p>
+            }
+            else
+            {
+                <strong>Nenhum insumo encontrado</strong>
+                <p>Ajuste os filtros ou limpe a busca para ver outros insumos.</p>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="stock-total-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Insumo</th>
+                        <th scope="col">Quantidade</th>
+                        <th scope="col">Valor unitário</th>
+                        <th scope="col">Valor total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in FilteredItems)
+                    {
+                        <tr @key="item.Id">
+                            <td class="item-name">
+                                <span>@item.Name</span>
+                                <span class="stock-total-category">@item.CategoryName</span>
+                            </td>
+                            <td>@item.Quantity</td>
+                            <td>@FormatCurrency(item.Value)</td>
+                            <td class="item-subtotal">@FormatCurrency(item.Value * item.Quantity)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>
+
+@code {
+    private DateTime? _startDate;
+    private DateTime? _endDate;
+    private Guid? _categoryId;
+    private string _search = string.Empty;
+
+    private bool HasFilters =>
+        _startDate is not null ||
+        _endDate is not null ||
+        _categoryId is not null ||
+        !string.IsNullOrWhiteSpace(_search);
+
+    private bool HasDateRange => _startDate is not null || _endDate is not null;
+
+    private bool HasValidDateRange =>
+        _startDate is null || _endDate is null || _startDate.Value.Date <= _endDate.Value.Date;
+
+    private IReadOnlyList<StockItem> FilteredItems
+    {
+        get
+        {
+            IEnumerable<StockItem> items = Inventory.Items;
+
+            if (!HasValidDateRange)
+            {
+                return [];
+            }
+
+            if (HasDateRange)
+            {
+                var movedItemIds = MovementService.Movements
+                    .Where(movement =>
+                        (_startDate is null || movement.OccurredAt.Date >= _startDate.Value.Date) &&
+                        (_endDate is null || movement.OccurredAt.Date <= _endDate.Value.Date))
+                    .SelectMany(movement => movement.Lines)
+                    .Select(line => line.ItemId)
+                    .ToHashSet();
+
+                items = items.Where(item => movedItemIds.Contains(item.Id));
+            }
+
+            if (_categoryId is Guid categoryId)
+            {
+                items = items.Where(item => item.CategoryId == categoryId);
+            }
+
+            if (!string.IsNullOrWhiteSpace(_search))
+            {
+                items = items.Where(item =>
+                    item.Name.Contains(_search.Trim(), StringComparison.CurrentCultureIgnoreCase));
+            }
+
+            return items
+                .OrderByDescending(item => item.Value * item.Quantity)
+                .ThenBy(item => item.Name, StringComparer.CurrentCultureIgnoreCase)
+                .ToArray();
+        }
+    }
+
+    private void ClearFilters()
+    {
+        _startDate = null;
+        _endDate = null;
+        _categoryId = null;
+        _search = string.Empty;
+    }
+
+    private static string FormatCurrency(decimal value) =>
+        value.ToString("C", CultureInfo.GetCultureInfo("pt-BR"));
+}

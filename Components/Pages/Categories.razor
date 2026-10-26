@@ -1,0 +1,96 @@
+@page "/categorias"
+
+@inject StockInventory Inventory
+
+<PageTitle>Categorias</PageTitle>
+
+<section class="page-heading">
+    <div>
+        <p class="eyebrow">CONTROLE DE ESTOQUE</p>
+        <h1>Categorias</h1>
+        <p class="subtitle">Organize seus insumos por categoria.</p>
+    </div>
+</section>
+
+<div class="content-grid">
+    <section class="panel form-panel">
+        <div class="panel-heading">
+            <div class="panel-icon" aria-hidden="true">+</div>
+            <div>
+                <h2>Adicionar categoria</h2>
+                <p>Crie categorias para organizar seus insumos.</p>
+            </div>
+        </div>
+
+        <EditForm Model="_form" OnValidSubmit="AddCategory" class="stock-form">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div class="field">
+                <label for="category-name">Nome da categoria</label>
+                <InputText id="category-name"
+                           @bind-Value="_form.Name"
+                           placeholder="Ex.: Material de escritório" />
+                <ValidationMessage For="() => _form.Name" />
+            </div>
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <p class="form-error" role="alert">@_errorMessage</p>
+            }
+
+            <button class="button button-primary" type="submit">Adicionar categoria</button>
+        </EditForm>
+    </section>
+
+    <section class="panel inventory-panel">
+        <div class="panel-heading inventory-heading">
+            <div>
+                <h2>Categorias cadastradas</h2>
+                <p>Selecione uma categoria ao adicionar cada insumo.</p>
+            </div>
+        </div>
+
+        @if (Inventory.Categories.Count == 0)
+        {
+            <div class="empty-state">
+                <div class="empty-icon" aria-hidden="true">□</div>
+                <strong>Nenhuma categoria cadastrada</strong>
+                <p>Adicione sua primeira categoria usando o formulário.</p>
+            </div>
+        }
+        else
+        {
+            <ul class="category-list">
+                @foreach (var category in Inventory.Categories)
+                {
+                    <li @key="category.Id">@category.Name</li>
+                }
+            </ul>
+        }
+    </section>
+</div>
+
+@code {
+    private CategoryForm _form = new();
+    private string? _errorMessage;
+
+    private void AddCategory()
+    {
+        if (!Inventory.AddCategory(_form.Name))
+        {
+            _errorMessage = "Essa categoria já está cadastrada.";
+            return;
+        }
+
+        _errorMessage = null;
+        _form = new CategoryForm();
+    }
+
+    private sealed class CategoryForm
+    {
+        [Required(ErrorMessage = "Informe o nome da categoria.")]
+        [StringLength(100, ErrorMessage = "O nome deve ter no máximo 100 caracteres.")]
+        public string Name { get; set; } = string.Empty;
+    }
+}

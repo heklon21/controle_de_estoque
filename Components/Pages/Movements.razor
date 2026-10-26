@@ -1,0 +1,447 @@
+@page "/movimentacoes"
+
+@inject StockInventory Inventory
+@inject StockMovementService MovementService
+
+<PageTitle>Movimentações de estoque</PageTitle>
+
+<section class="page-heading movements-page-heading">
+    <div>
+        <p class="eyebrow">CONTROLE DE ESTOQUE</p>
+        <h1>Movimentações de estoque</h1>
+        <p class="subtitle">Registre entradas e saídas dos insumos.</p>
+    </div>
+    @if (!_isFormOpen)
+    {
+        <button class="button button-primary new-movement-button"
+                type="button"
+                @onclick="OpenForm">
+            <span aria-hidden="true">+</span>
+            Nova movimentação
+        </button>
+    }
+</section>
+
+@if (_isFormOpen)
+{
+    <section class="panel movement-form-panel">
+        <div class="panel-heading movement-form-heading">
+            <div>
+                <h2>Nova movimentação</h2>
+                <p>Informe os dados e os insumos da movimentação.</p>
+            </div>
+        </div>
+
+        @if (Inventory.Items.Count == 0)
+        {
+            <div class="form-error" role="alert">
+                Cadastre ao menos um insumo antes de abrir uma movimentação.
+                <a href="/insumos">Ir para cadastro de insumos</a>
+            </div>
+        }
+        else
+        {
+            <EditForm Model="_form" OnValidSubmit="SaveMovement" class="movement-form">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="movement-fields">
+                    <div class="field">
+                        <label for="movement-type">Tipo</label>
+                        <InputSelect id="movement-type" @bind-Value="_form.Type">
+                            <option value="">Selecione o tipo</option>
+                            <option value="Entrada">Entrada</option>
+                            <option value="Saída">Saída</option>
+                        </InputSelect>
+                        <ValidationMessage For="() => _form.Type" />
+                    </div>
+
+                    <div class="field">
+                        <label for="movement-date">Data da movimentação</label>
+                        <InputDate id="movement-date" @bind-Value="_form.Date" />
+                        <ValidationMessage For="() => _form.Date" />
+                    </div>
+
+                    <div class="field">
+                        <label for="movement-time">Hora</label>
+                        <input id="movement-time" type="time" value="@_form.Time" readonly />
+                        <span class="field-hint">Hora preenchida automaticamente</span>
+                    </div>
+
+                    <div class="field">
+                        <label for="movement-reason">Motivo</label>
+                        <InputSelect id="movement-reason" @bind-Value="_form.Reason">
+                            <option value="">Selecione um motivo</option>
+                            <option value="Compra">Compra</option>
+                            <option value="Consumo interno">Consumo interno</option>
+                            <option value="Venda">Venda</option>
+                            <option value="Devolução">Devolução</option>
+                            <option value="Ajuste de inventário">Ajuste de inventário</option>
+                            <option value="Perda ou avaria">Perda ou avaria</option>
+                            <option value="Outro">Outro</option>
+                        </InputSelect>
+                        <ValidationMessage For="() => _form.Reason" />
+                    </div>
+
+                    <div class="field observation-field">
+                        <label for="movement-observation">Observação</label>
+                        <InputTextArea id="movement-observation"
+                                       @bind-Value="_form.Observation"
+                                       maxlength="250"
+                                       placeholder="Escreva uma breve observação (opcional)" />
+                        <span class="field-hint">Até 250 caracteres</span>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <p class="form-error" role="alert">@_errorMessage</p>
+                }
+
+                <div class="movement-lines-heading">
+                    <div>
+                        <h3>Insumos</h3>
+                        <p>O estoque será atualizado ao salvar a movimentação.</p>
+                    </div>
+                    <button class="button button-secondary"
+                            type="button"
+                            @onclick="AddLine">
+                        + Adicionar insumo
+                    </button>
+                </div>
+
+                <div class="table-wrap">
+                    <table class="movement-lines-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Insumo</th>
+                                <th scope="col">Estoque atual</th>
+                                <th scope="col">Custo unitário</th>
+                                <th scope="col">Quantidade</th>
+                                <th scope="col">Total</th>
+                                <th scope="col"><span class="visually-hidden">Ações</span></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var line in _form.Lines)
+                            {
+                                <tr @key="line.Id">
+                                    <td>
+                                        <InputSelect aria-label="Insumo da movimentação"
+                                                     @bind-Value="line.ItemId">
+                                            <option value="">Selecione um insumo</option>
+                                            @foreach (var item in Inventory.Items)
+                                            {
+                                                <option value="@item.Id">@item.Name</option>
+                                            }
+                                        </InputSelect>
+                                    </td>
+                                    <td>@(GetItem(line.ItemId)?.Quantity ?? 0)</td>
+                                    <td>@FormatCurrency(GetItem(line.ItemId)?.Value ?? 0)</td>
+                                    <td>
+                                        <InputNumber aria-label="Quantidade movimentada"
+                                                     @bind-Value="line.Quantity"
+                                                     min="1"
+                                                     step="1" />
+                                    </td>
+                                    <td class="item-subtotal">@FormatCurrency(GetLineTotal(line))</td>
+                                    <td class="action-cell">
+                                        <button class="button-remove"
+                                                type="button"
+                                                aria-label="Remover insumo da movimentação"
+                                                disabled="@(_form.Lines.Count == 1)"
+                                                @onclick="() => RemoveLine(line.Id)">
+                                            Remover
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <th scope="row" colspan="4">Total da movimentação</th>
+                                <td colspan="2">@FormatCurrency(FormTotal)</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <div class="movement-form-actions">
+                    <button class="button button-secondary" type="button" @onclick="CancelForm">
+                        Cancelar
+                    </button>
+                    <button class="button button-primary" type="submit">
+                        Salvar movimentação
+                    </button>
+                </div>
+            </EditForm>
+        }
+    </section>
+}
+
+<section class="panel stock-total-filters inventory-filters" aria-label="Filtros das movimentações">
+    <div class="stock-filter-fields">
+        <div class="field">
+            <label for="movements-start-date">Movimentações a partir de</label>
+            <InputDate id="movements-start-date" @bind-Value="_startDate" />
+        </div>
+        <div class="field">
+            <label for="movements-end-date">Movimentações até</label>
+            <InputDate id="movements-end-date" @bind-Value="_endDate" />
+        </div>
+        <div class="field">
+            <label for="movements-category">Categoria</label>
+            <InputSelect id="movements-category" @bind-Value="_categoryId">
+                <option value="">Todas as categorias</option>
+                @foreach (var category in Inventory.Categories)
+                {
+                    <option value="@category.Id">@category.Name</option>
+                }
+            </InputSelect>
+        </div>
+        <div class="field stock-search-field">
+            <label for="movements-search">Buscar insumo</label>
+            <InputText id="movements-search"
+                       @bind-Value="_search"
+                       @bind-Value:event="oninput"
+                       placeholder="Digite o nome do insumo" />
+        </div>
+        <button class="button button-secondary clear-stock-filters"
+                type="button"
+                disabled="@(!HasFilters)"
+                @onclick="ClearFilters">
+            Limpar filtros
+        </button>
+    </div>
+    @if (HasInvalidDateRange)
+    {
+        <p class="form-error stock-filter-error" role="alert">
+            A data inicial deve ser anterior ou igual à data final.
+        </p>
+    }
+    <p class="stock-filter-hint">O período filtra as movimentações pela data registrada.</p>
+</section>
+
+<section class="panel inventory-panel movements-list-panel">
+    <div class="panel-heading inventory-heading">
+        <div>
+            <h2>Movimentações registradas</h2>
+            <p>Exibindo @FilteredMovements.Count de @MovementService.Movements.Count movimentações.</p>
+        </div>
+    </div>
+
+    @if (FilteredMovements.Count == 0)
+    {
+        <div class="empty-state">
+            <div class="empty-icon" aria-hidden="true">↔</div>
+            @if (MovementService.Movements.Count == 0)
+            {
+                <strong>Nenhuma movimentação registrada</strong>
+                <p>Use “Nova movimentação” para registrar uma entrada ou saída.</p>
+            }
+            else if (HasInvalidDateRange)
+            {
+                <strong>Período inválido</strong>
+                <p>Corrija as datas para consultar as movimentações.</p>
+            }
+            else
+            {
+                <strong>Nenhuma movimentação encontrada</strong>
+                <p>Ajuste os filtros para ver outras movimentações.</p>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th scope="col">Data e hora</th>
+                        <th scope="col">Tipo</th>
+                        <th scope="col">Motivo</th>
+                        <th scope="col">Insumos</th>
+                        <th scope="col">Quantidade</th>
+                        <th scope="col">Valor</th>
+                        <th scope="col">Observação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var movement in FilteredMovements)
+                    {
+                        var lines = GetFilteredLines(movement).ToArray();
+                        <tr @key="movement.Id">
+                            <td>@movement.OccurredAt.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td>
+                                <span class="movement-type @(movement.IsEntry ? "movement-entry" : "movement-exit")">
+                                    @(movement.IsEntry ? "Entrada" : "Saída")
+                                </span>
+                            </td>
+                            <td>@movement.Reason</td>
+                            <td>@string.Join(", ", lines.Select(line => line.ItemName))</td>
+                            <td>@lines.Sum(line => (long)line.Quantity)</td>
+                            <td>@FormatCurrency(lines.Sum(line => line.UnitValue * line.Quantity))</td>
+                            <td>@(string.IsNullOrWhiteSpace(movement.Observation) ? "—" : movement.Observation)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>
+
+@code {
+    private MovementForm _form = new();
+    private bool _isFormOpen;
+    private string? _errorMessage;
+    private DateTime? _startDate;
+    private DateTime? _endDate;
+    private Guid? _categoryId;
+    private string _search = string.Empty;
+
+    private decimal FormTotal => _form.Lines.Sum(GetLineTotal);
+
+    private bool HasFilters =>
+        _startDate is not null ||
+        _endDate is not null ||
+        _categoryId is not null ||
+        !string.IsNullOrWhiteSpace(_search);
+
+    private bool HasInvalidDateRange =>
+        _startDate is DateTime startDate &&
+        _endDate is DateTime endDate &&
+        startDate.Date > endDate.Date;
+
+    private IReadOnlyList<StockMovement> FilteredMovements
+    {
+        get
+        {
+            if (HasInvalidDateRange)
+            {
+                return [];
+            }
+
+            return MovementService.Movements
+                .Where(movement =>
+                    (_startDate is null || movement.OccurredAt.Date >= _startDate.Value.Date) &&
+                    (_endDate is null || movement.OccurredAt.Date <= _endDate.Value.Date) &&
+                    GetFilteredLines(movement).Any())
+                .ToArray();
+        }
+    }
+
+    private static string FormatCurrency(decimal value) =>
+        value.ToString("C", CultureInfo.GetCultureInfo("pt-BR"));
+
+    private IEnumerable<StockMovementLine> GetFilteredLines(StockMovement movement)
+    {
+        IEnumerable<StockMovementLine> lines = movement.Lines;
+
+        if (_categoryId is Guid categoryId)
+        {
+            lines = lines.Where(line => line.CategoryId == categoryId);
+        }
+
+        if (!string.IsNullOrWhiteSpace(_search))
+        {
+            lines = lines.Where(line =>
+                line.ItemName.Contains(_search.Trim(), StringComparison.CurrentCultureIgnoreCase));
+        }
+
+        return lines;
+    }
+
+    private void ClearFilters()
+    {
+        _startDate = null;
+        _endDate = null;
+        _categoryId = null;
+        _search = string.Empty;
+    }
+
+    private StockItem? GetItem(Guid? itemId) =>
+        itemId is Guid id ? Inventory.Items.FirstOrDefault(item => item.Id == id) : null;
+
+    private decimal GetLineTotal(MovementLineForm line) =>
+        (GetItem(line.ItemId)?.Value ?? 0) * Math.Max(line.Quantity, 0);
+
+    private void OpenForm()
+    {
+        _form = new MovementForm();
+        _errorMessage = null;
+        _isFormOpen = true;
+    }
+
+    private void AddLine() =>
+        _form.Lines.Add(new MovementLineForm());
+
+    private void RemoveLine(Guid lineId) =>
+        _form.Lines.RemoveAll(line => line.Id == lineId);
+
+    private void CancelForm()
+    {
+        _form = new MovementForm();
+        _errorMessage = null;
+        _isFormOpen = false;
+    }
+
+    private void SaveMovement()
+    {
+        var now = DateTime.Now;
+        _form.Time = now.ToString("HH:mm");
+
+        if (_form.Lines.Any(line => line.ItemId is null || line.Quantity < 1))
+        {
+            _errorMessage = "Selecione um insumo e informe uma quantidade maior que zero em cada linha.";
+            return;
+        }
+
+        var lines = _form.Lines
+            .Select(line => new StockMovementLineDraft(line.ItemId!.Value, line.Quantity))
+            .ToArray();
+
+        var occurredAt = _form.Date.Date.Add(now.TimeOfDay);
+        if (!MovementService.TryCreate(
+                occurredAt,
+                _form.Type == "Entrada",
+                _form.Reason,
+                _form.Observation,
+                lines,
+                out var error))
+        {
+            _errorMessage = error;
+            return;
+        }
+
+        _form = new MovementForm();
+        _errorMessage = null;
+        _isFormOpen = false;
+    }
+
+    private sealed class MovementForm
+    {
+        [Required(ErrorMessage = "Selecione o tipo de movimentação.")]
+        public string Type { get; set; } = string.Empty;
+
+        public DateTime Date { get; set; } = DateTime.Today;
+
+        public string Time { get; set; } = DateTime.Now.ToString("HH:mm");
+
+        [Required(ErrorMessage = "Selecione o motivo da movimentação.")]
+        public string Reason { get; set; } = string.Empty;
+
+        [StringLength(250, ErrorMessage = "A observação deve ter no máximo 250 caracteres.")]
+        public string Observation { get; set; } = string.Empty;
+
+        public List<MovementLineForm> Lines { get; } = [new()];
+    }
+
+    private sealed class MovementLineForm
+    {
+        public Guid Id { get; } = Guid.NewGuid();
+
+        public Guid? ItemId { get; set; }
+
+        public int Quantity { get; set; } = 1;
+    }
+}

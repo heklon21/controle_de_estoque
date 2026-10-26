@@ -1,0 +1,44 @@
+@page "/"
+
+@inject StockInventory Inventory
+
+<PageTitle>Dashboard | Controle de estoque</PageTitle>
+
+<section class="page-heading">
+    <div>
+        <p class="eyebrow">VISÃO GERAL</p>
+        <h1>Dashboard</h1>
+        <p class="subtitle">Acompanhe um resumo dos insumos cadastrados no estoque.</p>
+    </div>
+</section>
+
+<section class="dashboard-grid" aria-label="Resumo do estoque">
+    <article class="dashboard-stat">
+        <span class="dashboard-stat-label">Saldo total em estoque</span>
+        <strong class="dashboard-stat-value">@FormatCurrency(Inventory.TotalValue)</strong>
+        <span class="dashboard-stat-caption">Valor dos insumos cadastrados</span>
+    </article>
+    <article class="dashboard-stat">
+        <span class="dashboard-stat-label">Insumos cadastrados</span>
+        <strong class="dashboard-stat-value">@Inventory.Items.Count</strong>
+        <span class="dashboard-stat-caption">Tipos de insumo no estoque</span>
+    </article>
+    <article class="dashboard-stat">
+        <span class="dashboard-stat-label">Quantidade em estoque</span>
+        <strong class="dashboard-stat-value">@Inventory.TotalQuantity</strong>
+        <span class="dashboard-stat-caption">Unidades somadas</span>
+    </article>
+</section>
+
+<section class="panel dashboard-action">
+    <div>
+        <h2>Gerencie seus insumos</h2>
+        <p>Acesse o cadastro de insumos para adicionar itens e atualizar quantidades.</p>
+    </div>
+    <a class="button button-primary dashboard-link" href="/insumos">Acessar cadastro de insumos</a>
+</section>
+
+@code {
+    private static string FormatCurrency(decimal value) =>
+        value.ToString("C", CultureInfo.GetCultureInfo("pt-BR"));
+}
