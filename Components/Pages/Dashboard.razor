@@ -45,7 +45,7 @@
             <h2 id="sales-view-title">Acompanhamento de vendas</h2>
             <p class="subtitle">@SelectedSalesDescription</p>
         </div>
-        <span class="sales-data-status">Aguardando integração com o PDV</span>
+        <span class="sales-data-status">DADOS FICTÍCIOS · DEMONSTRAÇÃO</span>
     </div>
     <div class="sales-view-buttons" role="group" aria-label="Demonstrativos de vendas">
         <button class="sales-view-button @GetSalesViewClass(SalesView.AverageTicket)"
@@ -86,6 +86,20 @@
         </button>
     </div>
     <div class="sales-filter-row">
+        <div class="sales-period-presets" role="group" aria-label="Períodos predefinidos">
+            <button class="sales-period-button @GetDatePresetClass(DatePreset.CurrentMonth)"
+                    type="button"
+                    aria-pressed="@IsDatePresetSelected(DatePreset.CurrentMonth)"
+                    @onclick="() => ApplyDatePreset(DatePreset.CurrentMonth)">
+                Mês atual
+            </button>
+            <button class="sales-period-button @GetDatePresetClass(DatePreset.PreviousMonth)"
+                    type="button"
+                    aria-pressed="@IsDatePresetSelected(DatePreset.PreviousMonth)"
+                    @onclick="() => ApplyDatePreset(DatePreset.PreviousMonth)">
+                Mês anterior
+            </button>
+        </div>
         <div class="sales-date-filter">
             <label class="sales-shift-trigger sales-date-trigger">
                 <svg class="sales-date-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
@@ -198,25 +212,46 @@
             </span>
         }
     </div>
-    <div class="sales-chart-placeholder" role="img"
-         aria-label="@($"{SelectedSalesTitle}, turno {SelectedShiftLabel}, período {SelectedDateRangeLabel}. Sem dados; serão exibidos após integração com o PDV.")">
-        <div class="sales-chart-grid" aria-hidden="true">
-            <span></span>
-            <span></span>
-            <span></span>
-            <span></span>
+    <div class="sales-demo-report" aria-label="@($"{SelectedSalesTitle}, turno {SelectedShiftLabel}, período {SelectedDateRangeLabel}. Dados fictícios para demonstração.")">
+        <div class="sales-report-summary">
+            <span>@ReportSummaryLabel</span>
+            <strong>@ReportSummaryValue</strong>
+            <span>@ReportSummaryCaption</span>
         </div>
-        <div class="sales-chart-empty">
-            <span class="sales-chart-icon" aria-hidden="true">▥</span>
-            <strong>O demonstrativo aparecerá aqui</strong>
-            <span>@($"Dados do turno {SelectedShiftLabel} no período {SelectedDateRangeLabel} serão carregados do seu PDV.")</span>
-        </div>
+        @if (SelectedReportEntries.Count == 0)
+        {
+            <div class="sales-chart-empty">
+                <span class="sales-chart-icon" aria-hidden="true">▥</span>
+                <strong>Nenhum dado neste filtro</strong>
+                <span>Experimente selecionar outro turno ou período.</span>
+            </div>
+        }
+        else
+        {
+            <div class="sales-report-list">
+                @foreach (var entry in SelectedReportEntries)
+                {
+                    <article class="sales-report-row">
+                        <div class="sales-report-row-heading">
+                            <strong>@entry.Label</strong>
+                            <span>@entry.Value</span>
+                        </div>
+                        <div class="sales-report-track" aria-hidden="true">
+                            <span style="@($"width: {entry.BarWidth.ToString("0.#", CultureInfo.InvariantCulture)}%")"></span>
+                        </div>
+                        <span class="sales-report-detail">@entry.Detail</span>
+                    </article>
+                }
+            </div>
+        }
     </div>
+    <p class="sales-demo-disclaimer">Exemplos ilustrativos; não representam vendas reais e não são enviados ao PDV.</p>
 </section>
 
 @code {
     private SalesView _selectedSalesView = SalesView.ItemsSold;
     private readonly HashSet<SalesShift> _selectedShifts = [SalesShift.Day];
+    private readonly IReadOnlyList<DemoOrder> _demoOrders = CreateDemoOrders();
     private bool _isShiftFilterOpen;
     private string _shiftSearch = string.Empty;
     private DateTime? _startDate;
@@ -238,6 +273,37 @@
         _endDate is DateTime endDate &&
         startDate.Date > endDate.Date;
 
+    private bool IsDatePresetSelected(DatePreset preset)
+    {
+        var today = DateTime.Today;
+        var (start, end) = preset switch
+        {
+            DatePreset.CurrentMonth => (new DateTime(today.Year, today.Month, 1), today),
+            DatePreset.PreviousMonth => (
+                new DateTime(today.Year, today.Month, 1).AddMonths(-1),
+                new DateTime(today.Year, today.Month, 1).AddDays(-1)),
+            _ => (DateTime.MinValue, DateTime.MinValue)
+        };
+
+        return _startDate?.Date == start && _endDate?.Date == end;
+    }
+
+    private string GetDatePresetClass(DatePreset preset) =>
+        IsDatePresetSelected(preset) ? "selected" : string.Empty;
+
+    private void ApplyDatePreset(DatePreset preset)
+    {
+        var today = DateTime.Today;
+        (_startDate, _endDate) = preset switch
+        {
+            DatePreset.CurrentMonth => (new DateTime(today.Year, today.Month, 1), today),
+            DatePreset.PreviousMonth => (
+                new DateTime(today.Year, today.Month, 1).AddMonths(-1),
+                new DateTime(today.Year, today.Month, 1).AddDays(-1)),
+            _ => (_startDate, _endDate)
+        };
+    }
+
     private string SelectedSalesTitle => _selectedSalesView switch
     {
         SalesView.AverageTicket => "Ticket médio por canal de venda",
@@ -257,6 +323,218 @@
         SalesView.CancelledOrders => "Consulte a quantidade de pedidos cancelados no período.",
         _ => "Consulte a quantidade vendida de cada item."
     };
+
+    private IReadOnlyList<DemoOrder> FilteredDemoOrders =>
+        HasInvalidDateRange
+            ? []
+            : _demoOrders
+                .Where(order => _selectedShifts.Contains(order.Shift))
+                .Where(order => _startDate is null || order.OccurredAt.Date >= _startDate.Value.Date)
+                .Where(order => _endDate is null || order.OccurredAt.Date <= _endDate.Value.Date)
+                .OrderByDescending(order => order.OccurredAt)
+                .ToArray();
+
+    private IReadOnlyList<DemoOrder> CompletedDemoOrders =>
+        FilteredDemoOrders.Where(order => !order.IsCancelled).ToArray();
+
+    private IReadOnlyList<ReportEntry> SelectedReportEntries
+    {
+        get
+        {
+            var completedOrders = CompletedDemoOrders;
+            return _selectedSalesView switch
+            {
+                SalesView.AverageTicket => BuildChannelEntries(
+                    completedOrders,
+                    orders => orders.Sum(GetOrderTotal) / orders.Count),
+                SalesView.OrdersByChannel => BuildChannelEntries(
+                    completedOrders,
+                    orders => orders.Count),
+                SalesView.ItemsSold => BuildItemEntries(completedOrders),
+                SalesView.SalesByDateTime => BuildOrderEntries(completedOrders),
+                SalesView.Revenue => BuildRevenueEntries(completedOrders),
+                SalesView.CancelledOrders => BuildCancelledEntries(FilteredDemoOrders),
+                _ => []
+            };
+        }
+    }
+
+    private string ReportSummaryLabel => _selectedSalesView switch
+    {
+        SalesView.AverageTicket => "TICKET MÉDIO GERAL",
+        SalesView.OrdersByChannel => "PEDIDOS CONCLUÍDOS",
+        SalesView.ItemsSold => "ITENS VENDIDOS",
+        SalesView.SalesByDateTime => "FATURAMENTO DO PERÍODO",
+        SalesView.Revenue => "FATURAMENTO DO PERÍODO",
+        SalesView.CancelledOrders => "PEDIDOS CANCELADOS",
+        _ => string.Empty
+    };
+
+    private string ReportSummaryValue => _selectedSalesView switch
+    {
+        SalesView.AverageTicket => FormatCurrency(AverageTicket(CompletedDemoOrders)),
+        SalesView.OrdersByChannel => FormatCount(CompletedDemoOrders.Count),
+        SalesView.ItemsSold => FormatCount(CompletedDemoOrders.Sum(order => order.Lines.Sum(line => line.Quantity))),
+        SalesView.SalesByDateTime or SalesView.Revenue => FormatCurrency(CompletedDemoOrders.Sum(GetOrderTotal)),
+        SalesView.CancelledOrders => FormatCount(FilteredDemoOrders.Count(order => order.IsCancelled)),
+        _ => "—"
+    };
+
+    private string ReportSummaryCaption =>
+        $"{FormatOrderStatus(CompletedDemoOrders.Count, "pedido concluído", "pedidos concluídos")} · {FormatOrderStatus(FilteredDemoOrders.Count(order => order.IsCancelled), "pedido cancelado", "pedidos cancelados")}";
+
+    private IReadOnlyList<ReportEntry> BuildChannelEntries(
+        IReadOnlyList<DemoOrder> orders,
+        Func<List<DemoOrder>, decimal> valueSelector)
+    {
+        var groups = orders
+            .GroupBy(order => order.Channel)
+            .Select(group => new
+            {
+                Label = group.Key,
+                Orders = group.ToList(),
+                Value = valueSelector(group.ToList())
+            })
+            .OrderByDescending(group => group.Value)
+            .ToArray();
+        var maxValue = groups.Select(group => group.Value).DefaultIfEmpty().Max();
+
+        return groups.Select(group => new ReportEntry(
+            group.Label,
+            _selectedSalesView == SalesView.AverageTicket
+                ? FormatCurrency(group.Value)
+                : FormatCount((int)group.Value),
+            $"{FormatOrderCount(group.Orders.Count)} · {FormatCurrency(group.Orders.Sum(GetOrderTotal))} em vendas",
+            GetBarWidth(group.Value, maxValue))).ToArray();
+    }
+
+    private static IReadOnlyList<ReportEntry> BuildItemEntries(IReadOnlyList<DemoOrder> orders)
+    {
+        var groups = orders
+            .SelectMany(order => order.Lines)
+            .GroupBy(line => line.Name)
+            .Select(group => new
+            {
+                Label = group.Key,
+                Quantity = group.Sum(line => line.Quantity),
+                Revenue = group.Sum(line => line.Quantity * line.UnitPrice)
+            })
+            .OrderByDescending(group => group.Quantity)
+            .ToArray();
+        var maxQuantity = groups.Select(group => group.Quantity).DefaultIfEmpty().Max();
+
+        return groups.Select(group => new ReportEntry(
+            group.Label,
+            $"{FormatCount(group.Quantity)} un.",
+            $"{FormatCurrency(group.Revenue)} em vendas",
+            GetBarWidth(group.Quantity, maxQuantity))).ToArray();
+    }
+
+    private static IReadOnlyList<ReportEntry> BuildOrderEntries(IReadOnlyList<DemoOrder> orders)
+    {
+        var selectedOrders = orders.Take(8).ToArray();
+        var maxTotal = selectedOrders.Select(GetOrderTotal).DefaultIfEmpty().Max();
+
+        return selectedOrders.Select(order => new ReportEntry(
+            $"{order.Code} · {order.Channel}",
+            FormatCurrency(GetOrderTotal(order)),
+            $"{order.OccurredAt:dd/MM/yyyy 'às' HH:mm} · {FormatCount(order.Lines.Sum(line => line.Quantity))} itens",
+            GetBarWidth(GetOrderTotal(order), maxTotal))).ToArray();
+    }
+
+    private static IReadOnlyList<ReportEntry> BuildRevenueEntries(IReadOnlyList<DemoOrder> orders)
+    {
+        var groups = orders
+            .GroupBy(order => order.OccurredAt.Date)
+            .Select(group => new
+            {
+                Date = group.Key,
+                Revenue = group.Sum(GetOrderTotal),
+                Count = group.Count()
+            })
+            .OrderBy(group => group.Date)
+            .ToArray();
+        var maxRevenue = groups.Select(group => group.Revenue).DefaultIfEmpty().Max();
+
+        return groups.Select(group => new ReportEntry(
+            group.Date.ToString("ddd, dd/MM", CultureInfo.GetCultureInfo("pt-BR")),
+            FormatCurrency(group.Revenue),
+            FormatOrderStatus(group.Count, "pedido concluído", "pedidos concluídos"),
+            GetBarWidth(group.Revenue, maxRevenue))).ToArray();
+    }
+
+    private static IReadOnlyList<ReportEntry> BuildCancelledEntries(IReadOnlyList<DemoOrder> orders)
+    {
+        var groups = orders
+            .Where(order => order.IsCancelled)
+            .GroupBy(order => order.Channel)
+            .Select(group => new { Label = group.Key, Count = group.Count() })
+            .OrderByDescending(group => group.Count)
+            .ToArray();
+        var maxCount = groups.Select(group => group.Count).DefaultIfEmpty().Max();
+
+        return groups.Select(group => new ReportEntry(
+            group.Label,
+            FormatCount(group.Count),
+            "pedidos cancelados",
+            GetBarWidth(group.Count, maxCount))).ToArray();
+    }
+
+    private static decimal AverageTicket(IReadOnlyList<DemoOrder> orders) =>
+        orders.Count == 0 ? 0 : orders.Sum(GetOrderTotal) / orders.Count;
+
+    private static decimal GetOrderTotal(DemoOrder order) =>
+        order.Lines.Sum(line => line.Quantity * line.UnitPrice);
+
+    private static double GetBarWidth(decimal value, decimal maxValue) =>
+        maxValue <= 0 ? 0 : (double)(value / maxValue * 100);
+
+    private static string FormatCount(int value) =>
+        value.ToString("N0", CultureInfo.GetCultureInfo("pt-BR"));
+
+    private static string FormatOrderCount(int count) =>
+        $"{FormatCount(count)} {(count == 1 ? "pedido" : "pedidos")}";
+
+    private static string FormatOrderStatus(int count, string singular, string plural) =>
+        $"{FormatCount(count)} {(count == 1 ? singular : plural)}";
+
+    private static IReadOnlyList<DemoOrder> CreateDemoOrders()
+    {
+        var today = DateTime.Today;
+        return
+        [
+            new("PED-1048", today.AddHours(9).AddMinutes(35), SalesShift.Day, "iFood", false,
+                [new("Brisket defumado", 2, 89.90m), new("Mac & cheese", 1, 24.00m)]),
+            new("PED-1047", today.AddHours(11).AddMinutes(15), SalesShift.Day, "Saipos", false,
+                [new("Burger Smokehouse", 2, 42.90m), new("Batata rústica", 1, 18.00m)]),
+            new("PED-1046", today.AddDays(-1).AddHours(20).AddMinutes(30), SalesShift.Night, "Saipos", false,
+                [new("Combo BBQ", 1, 79.90m), new("Costela defumada", 1, 96.00m)]),
+            new("PED-1045", today.AddDays(-1).AddHours(12).AddMinutes(45), SalesShift.Day, "Saipos", false,
+                [new("Pulled pork", 2, 48.00m), new("Refrigerante artesanal", 2, 12.00m)]),
+            new("PED-1044", today.AddDays(-1).AddHours(19).AddMinutes(20), SalesShift.Night, "iFood", false,
+                [new("Costela defumada", 1, 96.00m), new("Brisket defumado", 1, 89.90m)]),
+            new("PED-1043", today.AddDays(-1).AddHours(21), SalesShift.Night, "Saipos", true,
+                [new("Burger Smokehouse", 2, 42.90m)]),
+            new("PED-1042", today.AddDays(-2).AddHours(11).AddMinutes(20), SalesShift.Day, "Saipos", false,
+                [new("Brisket defumado", 1, 89.90m), new("Batata rústica", 2, 18.00m)]),
+            new("PED-1034", today.AddDays(-2).AddHours(15).AddMinutes(25), SalesShift.Day, "iFood", true,
+                [new("Burger Smokehouse", 1, 42.90m)]),
+            new("PED-1041", today.AddDays(-2).AddHours(18).AddMinutes(50), SalesShift.Night, "iFood", false,
+                [new("Combo BBQ", 1, 79.90m), new("Pulled pork", 1, 48.00m)]),
+            new("PED-1040", today.AddDays(-3).AddHours(12).AddMinutes(10), SalesShift.Day, "iFood", false,
+                [new("Burger Smokehouse", 2, 42.90m), new("Refrigerante artesanal", 2, 12.00m)]),
+            new("PED-1039", today.AddDays(-3).AddHours(22).AddMinutes(15), SalesShift.Night, "Saipos", true,
+                [new("Combo BBQ", 1, 79.90m)]),
+            new("PED-1038", today.AddDays(-4).AddHours(14).AddMinutes(40), SalesShift.Day, "Saipos", false,
+                [new("Brisket defumado", 1, 89.90m), new("Mac & cheese", 1, 24.00m)]),
+            new("PED-1037", today.AddDays(-4).AddHours(20).AddMinutes(20), SalesShift.Night, "Saipos", false,
+                [new("Costela defumada", 2, 96.00m)]),
+            new("PED-1036", today.AddDays(-5).AddHours(13).AddMinutes(10), SalesShift.Day, "iFood", false,
+                [new("Pulled pork", 1, 48.00m), new("Mac & cheese", 1, 24.00m)]),
+            new("PED-1035", today.AddDays(-5).AddHours(19).AddMinutes(50), SalesShift.Night, "iFood", false,
+                [new("Combo BBQ", 1, 79.90m), new("Burger Smokehouse", 2, 42.90m)])
+        ];
+    }
 
     private string GetSalesViewClass(SalesView view) =>
         _selectedSalesView == view ? "selected" : string.Empty;
@@ -350,4 +628,22 @@
         Start,
         End
     }
+
+    private enum DatePreset
+    {
+        CurrentMonth,
+        PreviousMonth
+    }
+
+    private sealed record DemoOrder(
+        string Code,
+        DateTime OccurredAt,
+        SalesShift Shift,
+        string Channel,
+        bool IsCancelled,
+        IReadOnlyList<DemoOrderLine> Lines);
+
+    private sealed record DemoOrderLine(string Name, int Quantity, decimal UnitPrice);
+
+    private sealed record ReportEntry(string Label, string Value, string Detail, double BarWidth);
 }
