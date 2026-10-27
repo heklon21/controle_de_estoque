@@ -1,6 +1,7 @@
 @page "/"
 
 @inject StockInventory Inventory
+@inject StockMovementService MovementService
 
 <PageTitle>Dashboard | Controle de estoque</PageTitle>
 
@@ -8,37 +9,345 @@
     <div>
         <p class="eyebrow">VISÃO GERAL</p>
         <h1>Dashboard</h1>
-        <p class="subtitle">Acompanhe um resumo dos insumos cadastrados no estoque.</p>
+        <p class="subtitle">Acompanhe o saldo total em estoque e o CMV.</p>
     </div>
 </section>
 
-<section class="dashboard-grid" aria-label="Resumo do estoque">
+<section class="dashboard-grid" aria-label="Indicadores do estoque">
     <article class="dashboard-stat">
         <span class="dashboard-stat-label">Saldo total em estoque</span>
         <strong class="dashboard-stat-value">@FormatCurrency(Inventory.TotalValue)</strong>
         <span class="dashboard-stat-caption">Valor dos insumos cadastrados</span>
     </article>
     <article class="dashboard-stat">
-        <span class="dashboard-stat-label">Insumos cadastrados</span>
-        <strong class="dashboard-stat-value">@Inventory.Items.Count</strong>
-        <span class="dashboard-stat-caption">Tipos de insumo no estoque</span>
-    </article>
-    <article class="dashboard-stat">
-        <span class="dashboard-stat-label">Quantidade em estoque</span>
-        <strong class="dashboard-stat-value">@Inventory.TotalQuantity</strong>
-        <span class="dashboard-stat-caption">Unidades somadas</span>
+        <span class="dashboard-stat-label">CMV da semana passada</span>
+        <strong class="dashboard-stat-value">
+            @(PreviousWeekCmv.Percentage is decimal percentage
+                ? $"{percentage.ToString("N2", CultureInfo.GetCultureInfo("pt-BR"))}%"
+                : "—")
+        </strong>
+        <span class="dashboard-stat-caption">
+            @if (PreviousWeekCmv.Percentage is null)
+            {
+                <span>Aguardando compras e faturamento do PDV</span>
+            }
+            else
+            {
+                <span>@($"Semana de {PreviousWeekCmv.PeriodStart:dd/MM/yyyy} a {PreviousWeekCmv.PeriodEnd:dd/MM/yyyy}")</span>
+            }
+        </span>
     </article>
 </section>
 
-<section class="panel dashboard-action">
-    <div>
-        <h2>Gerencie seus insumos</h2>
-        <p>Acesse o cadastro de insumos para adicionar itens e atualizar quantidades.</p>
+<section class="panel dashboard-sales-panel" aria-labelledby="sales-view-title">
+    <div class="dashboard-sales-heading">
+        <div>
+            <h2 id="sales-view-title">Acompanhamento de vendas</h2>
+            <p class="subtitle">@SelectedSalesDescription</p>
+        </div>
+        <span class="sales-data-status">Aguardando integração com o PDV</span>
     </div>
-    <a class="button button-primary dashboard-link" href="/insumos">Acessar cadastro de insumos</a>
+    <div class="sales-view-buttons" role="group" aria-label="Demonstrativos de vendas">
+        <button class="sales-view-button @GetSalesViewClass(SalesView.AverageTicket)"
+                type="button"
+                aria-pressed="@(_selectedSalesView == SalesView.AverageTicket)"
+                @onclick="() => _selectedSalesView = SalesView.AverageTicket">
+            Ticket médio por canal de venda
+        </button>
+        <button class="sales-view-button @GetSalesViewClass(SalesView.OrdersByChannel)"
+                type="button"
+                aria-pressed="@(_selectedSalesView == SalesView.OrdersByChannel)"
+                @onclick="() => _selectedSalesView = SalesView.OrdersByChannel">
+            Quantidade de pedidos por canal de venda
+        </button>
+        <button class="sales-view-button @GetSalesViewClass(SalesView.ItemsSold)"
+                type="button"
+                aria-pressed="@(_selectedSalesView == SalesView.ItemsSold)"
+                @onclick="() => _selectedSalesView = SalesView.ItemsSold">
+            Vendas por itens
+        </button>
+        <button class="sales-view-button @GetSalesViewClass(SalesView.SalesByDateTime)"
+                type="button"
+                aria-pressed="@(_selectedSalesView == SalesView.SalesByDateTime)"
+                @onclick="() => _selectedSalesView = SalesView.SalesByDateTime">
+            Vendas por data/hora
+        </button>
+        <button class="sales-view-button @GetSalesViewClass(SalesView.Revenue)"
+                type="button"
+                aria-pressed="@(_selectedSalesView == SalesView.Revenue)"
+                @onclick="() => _selectedSalesView = SalesView.Revenue">
+            Faturamento
+        </button>
+        <button class="sales-view-button @GetSalesViewClass(SalesView.CancelledOrders)"
+                type="button"
+                aria-pressed="@(_selectedSalesView == SalesView.CancelledOrders)"
+                @onclick="() => _selectedSalesView = SalesView.CancelledOrders">
+            Pedidos cancelados
+        </button>
+    </div>
+    <div class="sales-filter-row">
+        <div class="sales-date-filter">
+            <label class="sales-shift-trigger sales-date-trigger">
+                <svg class="sales-date-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                    <rect x="3.5" y="5" width="13" height="11.5" rx="1.5" />
+                    <path d="M6.5 3.5v3M13.5 3.5v3M3.5 8.5h13" />
+                </svg>
+                <span>Data Inicial</span>
+                @if (_startDate is DateTime startDate)
+                {
+                    <span class="sales-date-trigger-value">@startDate.ToString("dd/MM/yyyy")</span>
+                }
+                <svg class="sales-shift-chevron"
+                     viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                    <path d="m5 7.5 5 5 5-5" />
+                </svg>
+                <input class="sales-date-picker-overlay"
+                       type="date"
+                       aria-label="Data Inicial"
+                       onclick="this.showPicker()"
+                       value="@FormatDateForInput(_startDate)"
+                       @onchange="args => UpdateDate(DateFilterTarget.Start, args)" />
+            </label>
+        </div>
+        <div class="sales-date-filter">
+            <label class="sales-shift-trigger sales-date-trigger">
+                <svg class="sales-date-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                    <rect x="3.5" y="5" width="13" height="11.5" rx="1.5" />
+                    <path d="M6.5 3.5v3M13.5 3.5v3M3.5 8.5h13" />
+                </svg>
+                <span>Data Final</span>
+                @if (_endDate is DateTime endDate)
+                {
+                    <span class="sales-date-trigger-value">@endDate.ToString("dd/MM/yyyy")</span>
+                }
+                <svg class="sales-shift-chevron"
+                     viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                    <path d="m5 7.5 5 5 5-5" />
+                </svg>
+                <input class="sales-date-picker-overlay"
+                       type="date"
+                       aria-label="Data Final"
+                       onclick="this.showPicker()"
+                       value="@FormatDateForInput(_endDate)"
+                       @onchange="args => UpdateDate(DateFilterTarget.End, args)" />
+            </label>
+        </div>
+        <div class="sales-shift-filter">
+            <button class="sales-shift-trigger"
+                    type="button"
+                    aria-expanded="@_isShiftFilterOpen"
+                    aria-controls="sales-shift-menu"
+                    @onclick="ToggleShiftFilter">
+                <span class="sales-shift-trigger-icon" aria-hidden="true">T</span>
+                <span>Turno</span>
+                <span class="sales-shift-trigger-value">@SelectedShiftLabel</span>
+                <svg class="sales-shift-chevron @(_isShiftFilterOpen ? "expanded" : null)"
+                     viewBox="0 0 20 20"
+                     fill="none"
+                     aria-hidden="true">
+                    <path d="m5 7.5 5 5 5-5" />
+                </svg>
+            </button>
+            @if (_isShiftFilterOpen)
+            {
+                <div class="sales-shift-menu" id="sales-shift-menu" aria-label="Filtrar por turno">
+                    <label class="sales-shift-search">
+                        <span class="visually-hidden">Pesquisar turnos</span>
+                        <input type="search"
+                               @bind="_shiftSearch"
+                               @bind:event="oninput"
+                               placeholder="Pesquisar na lista" />
+                    </label>
+                    <div class="sales-shift-options">
+                        <label class="sales-shift-option sales-shift-select-all">
+                            <input type="checkbox"
+                                   checked="@(_selectedShifts.Count == 2)"
+                                   @onchange="ToggleAllShifts" />
+                            <span>Selecionar tudo</span>
+                        </label>
+                        @if (MatchesShiftSearch(SalesShift.Day))
+                        {
+                            <label class="sales-shift-option">
+                                <input type="checkbox"
+                                       checked="@_selectedShifts.Contains(SalesShift.Day)"
+                                       @onchange="args => ToggleShift(SalesShift.Day, args)" />
+                                <span>Dia</span>
+                            </label>
+                        }
+                        @if (MatchesShiftSearch(SalesShift.Night))
+                        {
+                            <label class="sales-shift-option">
+                                <input type="checkbox"
+                                       checked="@_selectedShifts.Contains(SalesShift.Night)"
+                                       @onchange="args => ToggleShift(SalesShift.Night, args)" />
+                                <span>Noite</span>
+                            </label>
+                        }
+                        @if (!MatchesShiftSearch(SalesShift.Day) && !MatchesShiftSearch(SalesShift.Night))
+                        {
+                            <p class="sales-shift-no-results">Nenhum turno encontrado.</p>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+        @if (HasInvalidDateRange)
+        {
+            <span class="sales-date-error" role="alert">
+                A data inicial deve ser anterior ou igual à data final.
+            </span>
+        }
+    </div>
+    <div class="sales-chart-placeholder" role="img"
+         aria-label="@($"{SelectedSalesTitle}, turno {SelectedShiftLabel}, período {SelectedDateRangeLabel}. Sem dados; serão exibidos após integração com o PDV.")">
+        <div class="sales-chart-grid" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+        <div class="sales-chart-empty">
+            <span class="sales-chart-icon" aria-hidden="true">▥</span>
+            <strong>O demonstrativo aparecerá aqui</strong>
+            <span>@($"Dados do turno {SelectedShiftLabel} no período {SelectedDateRangeLabel} serão carregados do seu PDV.")</span>
+        </div>
+    </div>
 </section>
 
 @code {
+    private SalesView _selectedSalesView = SalesView.ItemsSold;
+    private readonly HashSet<SalesShift> _selectedShifts = [SalesShift.Day];
+    private bool _isShiftFilterOpen;
+    private string _shiftSearch = string.Empty;
+    private DateTime? _startDate;
+    private DateTime? _endDate;
+
+    private string SelectedShiftLabel => _selectedShifts.Count switch
+    {
+        1 when _selectedShifts.Contains(SalesShift.Day) => "Dia",
+        1 => "Noite",
+        2 => "Ambos",
+        _ => "Nenhum"
+    };
+
+    private string SelectedDateRangeLabel =>
+        $"{_startDate?.ToString("dd/MM/yyyy") ?? "início"} a {_endDate?.ToString("dd/MM/yyyy") ?? "hoje"}";
+
+    private bool HasInvalidDateRange =>
+        _startDate is DateTime startDate &&
+        _endDate is DateTime endDate &&
+        startDate.Date > endDate.Date;
+
+    private string SelectedSalesTitle => _selectedSalesView switch
+    {
+        SalesView.AverageTicket => "Ticket médio por canal de venda",
+        SalesView.OrdersByChannel => "Quantidade de pedidos por canal de venda",
+        SalesView.SalesByDateTime => "Vendas por data/hora",
+        SalesView.Revenue => "Faturamento",
+        SalesView.CancelledOrders => "Pedidos cancelados",
+        _ => "Vendas por itens"
+    };
+
+    private string SelectedSalesDescription => _selectedSalesView switch
+    {
+        SalesView.AverageTicket => "Compare o valor médio dos pedidos em cada canal de venda.",
+        SalesView.OrdersByChannel => "Compare a quantidade de pedidos realizados em cada canal.",
+        SalesView.SalesByDateTime => "Consulte as vendas organizadas por data e horário.",
+        SalesView.Revenue => "Consulte o faturamento no período selecionado.",
+        SalesView.CancelledOrders => "Consulte a quantidade de pedidos cancelados no período.",
+        _ => "Consulte a quantidade vendida de cada item."
+    };
+
+    private string GetSalesViewClass(SalesView view) =>
+        _selectedSalesView == view ? "selected" : string.Empty;
+
+    private bool MatchesShiftSearch(SalesShift shift)
+    {
+        var label = shift == SalesShift.Day ? "Dia" : "Noite";
+        return string.IsNullOrWhiteSpace(_shiftSearch) ||
+               label.Contains(_shiftSearch.Trim(), StringComparison.CurrentCultureIgnoreCase);
+    }
+
+    private void ToggleShiftFilter()
+    {
+        _isShiftFilterOpen = !_isShiftFilterOpen;
+        if (_isShiftFilterOpen)
+        {
+            _shiftSearch = string.Empty;
+        }
+    }
+
+    private void ToggleAllShifts(ChangeEventArgs args)
+    {
+        _selectedShifts.Clear();
+        if (args.Value is true)
+        {
+            _selectedShifts.UnionWith(Enum.GetValues<SalesShift>());
+        }
+    }
+
+    private void ToggleShift(SalesShift shift, ChangeEventArgs args)
+    {
+        if (args.Value is true)
+        {
+            _selectedShifts.Add(shift);
+        }
+        else
+        {
+            _selectedShifts.Remove(shift);
+        }
+    }
+
+    private static string? FormatDateForInput(DateTime? date) =>
+        date?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+    private void UpdateDate(DateFilterTarget target, ChangeEventArgs args)
+    {
+        var dateText = args.Value?.ToString();
+        DateTime? date = DateTime.TryParseExact(
+            dateText,
+            "yyyy-MM-dd",
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.None,
+            out var parsedDate)
+            ? parsedDate
+            : null;
+
+        if (target == DateFilterTarget.Start)
+        {
+            _startDate = date;
+        }
+        else
+        {
+            _endDate = date;
+        }
+    }
+
+    private WeeklyCmv PreviousWeekCmv =>
+        MovementService.CalculatePreviousWeekCmv(DateTime.Today, purchases: null, revenue: null);
+
     private static string FormatCurrency(decimal value) =>
         value.ToString("C", CultureInfo.GetCultureInfo("pt-BR"));
+
+    private enum SalesView
+    {
+        AverageTicket,
+        OrdersByChannel,
+        ItemsSold,
+        SalesByDateTime,
+        Revenue,
+        CancelledOrders
+    }
+
+    private enum SalesShift
+    {
+        Day,
+        Night
+    }
+
+    private enum DateFilterTarget
+    {
+        Start,
+        End
+    }
 }

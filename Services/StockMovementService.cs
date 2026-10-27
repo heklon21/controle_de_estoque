@@ -6,6 +6,42 @@ public sealed class StockMovementService(StockInventory inventory)
 
     public IReadOnlyList<StockMovement> Movements => _movements;
 
+    public WeeklyCmv CalculatePreviousWeekCmv(
+        DateTime referenceDate,
+        decimal? purchases,
+        decimal? revenue)
+    {
+        var daysSinceTuesday = ((int)referenceDate.DayOfWeek - (int)DayOfWeek.Tuesday + 7) % 7;
+        var thisWeekStart = referenceDate.Date.AddDays(-daysSinceTuesday);
+        var periodStart = thisWeekStart.AddDays(-7);
+        var periodEndExclusive = thisWeekStart;
+
+        var movementChangesAfterPeriodStart = _movements
+            .Where(movement => movement.OccurredAt >= periodStart)
+            .Sum(GetSignedValue);
+        var movementChangesAfterPeriodEnd = _movements
+            .Where(movement => movement.OccurredAt >= periodEndExclusive)
+            .Sum(GetSignedValue);
+        var startingInventory = inventory.TotalValue - movementChangesAfterPeriodStart;
+        var endingInventory = inventory.TotalValue - movementChangesAfterPeriodEnd;
+        decimal? costOfGoodsSold = purchases is decimal purchaseValue
+            ? startingInventory + purchaseValue - endingInventory
+            : null;
+        decimal? percentage = costOfGoodsSold is decimal cost && revenue is > 0
+            ? cost / revenue.Value * 100
+            : null;
+
+        return new WeeklyCmv(
+            periodStart,
+            periodEndExclusive.AddDays(-1),
+            startingInventory,
+            purchases,
+            endingInventory,
+            revenue,
+            costOfGoodsSold,
+            percentage);
+    }
+
     public bool TryCreate(
         DateTime occurredAt,
         bool isEntry,
@@ -64,7 +100,20 @@ public sealed class StockMovementService(StockInventory inventory)
         error = string.Empty;
         return true;
     }
+
+    private static decimal GetSignedValue(StockMovement movement) =>
+        movement.IsEntry ? movement.TotalValue : -movement.TotalValue;
 }
+
+public sealed record WeeklyCmv(
+    DateTime PeriodStart,
+    DateTime PeriodEnd,
+    decimal StartingInventory,
+    decimal? Purchases,
+    decimal EndingInventory,
+    decimal? Revenue,
+    decimal? CostOfGoodsSold,
+    decimal? Percentage);
 
 public sealed record StockMovement(
     Guid Id,
