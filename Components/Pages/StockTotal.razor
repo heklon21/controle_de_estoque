@@ -14,12 +14,12 @@
 </section>
 
 <section class="panel stock-total-filters" aria-label="Filtros do estoque">
-    <div class="stock-filter-fields">
-        <div class="field">
+    <div class="stock-filter-fields stock-total-filter-fields">
+        <div class="field stock-date-filter">
             <label for="stock-start-date">Movimentações a partir de</label>
             <InputDate id="stock-start-date" @bind-Value="_startDate" />
         </div>
-        <div class="field">
+        <div class="field stock-date-filter">
             <label for="stock-end-date">Movimentações até</label>
             <InputDate id="stock-end-date" @bind-Value="_endDate" />
         </div>
@@ -33,12 +33,26 @@
                 }
             </InputSelect>
         </div>
-        <div class="field stock-search-field">
+        <div class="field stock-search-field stock-total-search-field">
             <label for="stock-search">Buscar insumo</label>
             <InputText id="stock-search"
                        @bind-Value="_search"
                        @bind-Value:event="oninput"
                        placeholder="Digite o nome do insumo" />
+        </div>
+        <div class="stock-date-presets" role="group" aria-label="Atalhos de período">
+            <button class="stock-date-preset @GetMonthPresetClass(previousMonth: false)"
+                    type="button"
+                    aria-pressed="@IsMonthPresetSelected(previousMonth: false)"
+                    @onclick="() => ApplyMonthPreset(previousMonth: false)">
+                Mês atual
+            </button>
+            <button class="stock-date-preset @GetMonthPresetClass(previousMonth: true)"
+                    type="button"
+                    aria-pressed="@IsMonthPresetSelected(previousMonth: true)"
+                    @onclick="() => ApplyMonthPreset(previousMonth: true)">
+                Mês anterior
+            </button>
         </div>
         <button class="button button-secondary clear-stock-filters"
                 type="button"
@@ -148,6 +162,29 @@
 
     private bool HasValidDateRange =>
         _startDate is null || _endDate is null || _startDate.Value.Date <= _endDate.Value.Date;
+
+    private bool IsMonthPresetSelected(bool previousMonth)
+    {
+        var today = DateTime.Today;
+        var currentMonthStart = new DateTime(today.Year, today.Month, 1);
+        var (start, end) = previousMonth
+            ? (currentMonthStart.AddMonths(-1), currentMonthStart.AddDays(-1))
+            : (currentMonthStart, today);
+
+        return _startDate?.Date == start && _endDate?.Date == end;
+    }
+
+    private string GetMonthPresetClass(bool previousMonth) =>
+        IsMonthPresetSelected(previousMonth) ? "selected" : string.Empty;
+
+    private void ApplyMonthPreset(bool previousMonth)
+    {
+        var today = DateTime.Today;
+        var currentMonthStart = new DateTime(today.Year, today.Month, 1);
+        (_startDate, _endDate) = previousMonth
+            ? (currentMonthStart.AddMonths(-1), currentMonthStart.AddDays(-1))
+            : (currentMonthStart, today);
+    }
 
     private IReadOnlyList<StockItem> FilteredItems
     {

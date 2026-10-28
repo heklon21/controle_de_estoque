@@ -39,6 +39,8 @@
     </article>
 </section>
 
+<WeatherForecast />
+
 <section class="panel dashboard-sales-panel" aria-labelledby="sales-view-title">
     <div class="dashboard-sales-heading">
         <div>
@@ -48,6 +50,12 @@
         <span class="sales-data-status">DADOS FICTÍCIOS · DEMONSTRAÇÃO</span>
     </div>
     <div class="sales-view-buttons" role="group" aria-label="Demonstrativos de vendas">
+        <button class="sales-view-button @GetSalesViewClass(SalesView.Revenue)"
+                type="button"
+                aria-pressed="@(_selectedSalesView == SalesView.Revenue)"
+                @onclick="() => _selectedSalesView = SalesView.Revenue">
+            Faturamento
+        </button>
         <button class="sales-view-button @GetSalesViewClass(SalesView.AverageTicket)"
                 type="button"
                 aria-pressed="@(_selectedSalesView == SalesView.AverageTicket)"
@@ -71,12 +79,6 @@
                 aria-pressed="@(_selectedSalesView == SalesView.SalesByDateTime)"
                 @onclick="() => _selectedSalesView = SalesView.SalesByDateTime">
             Vendas por data/hora
-        </button>
-        <button class="sales-view-button @GetSalesViewClass(SalesView.Revenue)"
-                type="button"
-                aria-pressed="@(_selectedSalesView == SalesView.Revenue)"
-                @onclick="() => _selectedSalesView = SalesView.Revenue">
-            Faturamento
         </button>
         <button class="sales-view-button @GetSalesViewClass(SalesView.CancelledOrders)"
                 type="button"
