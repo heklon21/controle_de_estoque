@@ -1,42 +1,13 @@
 @page "/"
 
-@inject StockInventory Inventory
-@inject StockMovementService MovementService
-
-<PageTitle>Dashboard | Controle de estoque</PageTitle>
+<PageTitle>Dashboard de vendas | Controle de estoque</PageTitle>
 
 <section class="page-heading">
     <div>
         <p class="eyebrow">VISÃO GERAL</p>
         <h1>Dashboard</h1>
-        <p class="subtitle">Acompanhe o saldo total em estoque e o CMV.</p>
+        <p class="subtitle">Acompanhe os indicadores de vendas, pedidos e faturamento.</p>
     </div>
-</section>
-
-<section class="dashboard-grid" aria-label="Indicadores do estoque">
-    <article class="dashboard-stat">
-        <span class="dashboard-stat-label">Saldo total em estoque</span>
-        <strong class="dashboard-stat-value">@FormatCurrency(Inventory.TotalValue)</strong>
-        <span class="dashboard-stat-caption">Valor dos insumos cadastrados</span>
-    </article>
-    <article class="dashboard-stat">
-        <span class="dashboard-stat-label">CMV da semana passada</span>
-        <strong class="dashboard-stat-value">
-            @(PreviousWeekCmv.Percentage is decimal percentage
-                ? $"{percentage.ToString("N2", CultureInfo.GetCultureInfo("pt-BR"))}%"
-                : "—")
-        </strong>
-        <span class="dashboard-stat-caption">
-            @if (PreviousWeekCmv.Percentage is null)
-            {
-                <span>Aguardando compras e faturamento do PDV</span>
-            }
-            else
-            {
-                <span>@($"Semana de {PreviousWeekCmv.PeriodStart:dd/MM/yyyy} a {PreviousWeekCmv.PeriodEnd:dd/MM/yyyy}")</span>
-            }
-        </span>
-    </article>
 </section>
 
 <WeatherForecast />
@@ -602,9 +573,6 @@
             _endDate = date;
         }
     }
-
-    private WeeklyCmv PreviousWeekCmv =>
-        MovementService.CalculatePreviousWeekCmv(DateTime.Today, purchases: null, revenue: null);
 
     private static string FormatCurrency(decimal value) =>
         value.ToString("C", CultureInfo.GetCultureInfo("pt-BR"));

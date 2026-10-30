@@ -2036,6 +2036,36 @@ tfoot td,
     outline-offset: 2px;
 }
 
+.sales-view-button:hover,
+.sales-period-button:hover,
+.stock-date-preset:hover {
+    color: var(--gold-light);
+    border-color: var(--gold);
+}
+
+.sales-view-button.selected,
+.sales-period-button.selected,
+.stock-date-preset.selected {
+    color: #17140b;
+    background: var(--gold);
+    border-color: var(--gold);
+}
+
+.sales-view-button.selected:hover,
+.sales-period-button.selected:hover,
+.stock-date-preset.selected:hover {
+    color: #111;
+    background: var(--gold-light);
+    border-color: var(--gold-light);
+}
+
+.sales-view-button:focus-visible,
+.sales-period-button:focus-visible,
+.stock-date-preset:focus-visible {
+    outline: 2px solid var(--gold-light);
+    outline-offset: 2px;
+}
+
 .weather-panel {
     margin-top: 24px;
     padding: 22px;

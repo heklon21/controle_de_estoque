@@ -1,19 +1,10 @@
 @page "/fluxo-de-caixa"
 
-<PageTitle>Fluxo de caixa</PageTitle>
+@inject NavigationManager Navigation
 
-<section class="page-heading">
-    <div>
-        <p class="eyebrow">MENU PRINCIPAL</p>
-        <h1>Fluxo de caixa</h1>
-        <p class="subtitle">Acompanhe as entradas e saídas financeiras.</p>
-    </div>
-</section>
+<PageTitle>Redirecionando para Financeiro</PageTitle>
 
-<section class="panel inventory-panel">
-    <div class="empty-state">
-        <div class="empty-icon" aria-hidden="true">R$</div>
-        <strong>Fluxo de caixa</strong>
-        <p>Os lançamentos financeiros aparecerão aqui.</p>
-    </div>
-</section>
+@code {
+    protected override void OnInitialized() =>
+        Navigation.NavigateTo("/financeiro", replace: true);
+}

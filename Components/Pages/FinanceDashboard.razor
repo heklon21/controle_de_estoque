@@ -1,0 +1,62 @@
+@page "/financeiro"
+
+@inject StockInventory Inventory
+@inject StockMovementService MovementService
+
+<PageTitle>Dashboard Financeiro | Controle de estoque</PageTitle>
+
+<section class="page-heading">
+    <div>
+        <p class="eyebrow">DASHBOARDS</p>
+        <h1>Financeiro</h1>
+        <p class="subtitle">Acompanhe o saldo total em estoque e o CMV.</p>
+    </div>
+</section>
+
+<section class="dashboard-grid" aria-label="Indicadores financeiros">
+    <article id="dashboard-stock-total" class="dashboard-stat">
+        <span class="dashboard-stat-label">Saldo total em estoque</span>
+        <strong class="dashboard-stat-value">@FormatCurrency(Inventory.TotalValue)</strong>
+        <span class="dashboard-stat-caption">Valor dos insumos cadastrados</span>
+    </article>
+    <article id="dashboard-cmv" class="dashboard-stat">
+        <span class="dashboard-stat-label">CMV da semana passada</span>
+        <strong class="dashboard-stat-value">
+            @(PreviousWeekCmv.Percentage is decimal percentage
+                ? $"{percentage.ToString("N2", CultureInfo.GetCultureInfo("pt-BR"))}%"
+                : "—")
+        </strong>
+        <span class="dashboard-stat-caption">
+            @if (PreviousWeekCmv.Percentage is null)
+            {
+                <span>Aguardando compras e faturamento do PDV</span>
+            }
+            else
+            {
+                <span>@($"Semana de {PreviousWeekCmv.PeriodStart:dd/MM/yyyy} a {PreviousWeekCmv.PeriodEnd:dd/MM/yyyy}")</span>
+            }
+        </span>
+    </article>
+</section>
+
+<section class="panel inventory-panel" aria-labelledby="cash-flow-title">
+    <div class="panel-heading">
+        <div>
+            <h2 id="cash-flow-title">Fluxo de caixa</h2>
+            <p>Acompanhe as entradas e saídas financeiras.</p>
+        </div>
+    </div>
+    <div class="empty-state">
+        <div class="empty-icon" aria-hidden="true">R$</div>
+        <strong>Fluxo de caixa</strong>
+        <p>Os lançamentos financeiros aparecerão aqui.</p>
+    </div>
+</section>
+
+@code {
+    private WeeklyCmv PreviousWeekCmv =>
+        MovementService.CalculatePreviousWeekCmv(DateTime.Today, purchases: null, revenue: null);
+
+    private static string FormatCurrency(decimal value) =>
+        value.ToString("C", CultureInfo.GetCultureInfo("pt-BR"));
+}
