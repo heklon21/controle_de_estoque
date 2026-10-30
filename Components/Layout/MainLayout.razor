@@ -6,15 +6,39 @@
 
         <nav class="sidebar-nav" aria-label="Menu principal">
             <p class="nav-section-label">MENU PRINCIPAL</p>
-            <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">
+            <button class="nav-group-button"
+                    type="button"
+                    aria-expanded="@(_isDashboardMenuExpanded ? "true" : "false")"
+                    aria-controls="dashboard-submenu"
+                    @onclick="ToggleDashboardMenu">
                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                     <rect x="3.5" y="3.5" width="7" height="7" rx="1.5" />
                     <rect x="13.5" y="3.5" width="7" height="7" rx="1.5" />
                     <rect x="3.5" y="13.5" width="7" height="7" rx="1.5" />
                     <rect x="13.5" y="13.5" width="7" height="7" rx="1.5" />
                 </svg>
-                <span>Dashboard</span>
-            </NavLink>
+                <span class="nav-group-label">Dashboards</span>
+                <svg class="nav-chevron @(_isDashboardMenuExpanded ? "expanded" : null)"
+                     viewBox="0 0 20 20"
+                     fill="none"
+                     aria-hidden="true">
+                    <path d="m6 8 4 4 4-4" />
+                </svg>
+            </button>
+            <div id="dashboard-submenu"
+                 class="nav-submenu"
+                 aria-label="Submenus de dashboards"
+                 hidden="@(!_isDashboardMenuExpanded)">
+                <NavLink class="nav-submenu-link" href="/fluxo-de-caixa" Match="NavLinkMatch.All">
+                    Financeiro
+                </NavLink>
+                <NavLink class="nav-submenu-link" href="/" Match="NavLinkMatch.All">
+                    Vendas
+                </NavLink>
+                <NavLink class="nav-submenu-link" href="/estoque-total" Match="NavLinkMatch.All">
+                    Operacional
+                </NavLink>
+            </div>
             <button class="nav-group-button"
                     type="button"
                     aria-expanded="@(_isStockMenuExpanded ? "true" : "false")"
@@ -79,7 +103,11 @@
 </div>
 
 @code {
+    private bool _isDashboardMenuExpanded = true;
     private bool _isStockMenuExpanded = true;
+
+    private void ToggleDashboardMenu() =>
+        _isDashboardMenuExpanded = !_isDashboardMenuExpanded;
 
     private void ToggleStockMenu() =>
         _isStockMenuExpanded = !_isStockMenuExpanded;
