@@ -5,10 +5,10 @@
     font-synthesis: none;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
-    --green: #d4af37;
-    --green-dark: #f0cc57;
-    --gold: #d4af37;
-    --gold-light: #f0cc57;
+    --green: #80090d;
+    --green-dark: #a9151c;
+    --gold: #bd9543;
+    --gold-light: #f0d27a;
     --muted: #aaa596;
     --border: #37342b;
 }
@@ -45,7 +45,15 @@ input {
 }
 
 .sidebar .brand {
-    padding: 0 12px;
+    display: block;
+    padding: 0 8px;
+}
+
+.brand-logo {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-width: 212px;
 }
 
 .sidebar-nav {
@@ -251,6 +259,20 @@ input {
     letter-spacing: -0.7px;
 }
 
+.topbar {
+    position: relative;
+}
+
+.topbar::after {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--green), var(--gold) 48%, transparent);
+    content: "";
+}
+
 .brand span {
     color: var(--green);
 }
@@ -398,6 +420,125 @@ h1 {
     margin-top: auto;
     color: var(--muted);
     font-size: 11px;
+}
+
+.cash-balance-period-filter {
+    display: grid;
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    gap: 8px;
+    padding: 12px;
+    background: #171717;
+    border: 1px solid #34312a;
+    border-radius: 8px;
+}
+
+.cash-balance-period-label {
+    grid-column: 1 / -1;
+    color: #d7d2c8;
+    font-size: 11px;
+}
+
+.cash-balance-date-fields {
+    display: contents;
+}
+
+.cash-balance-date-field {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.cash-balance-date-field label {
+    color: #d7d2c8;
+    font-size: 11px;
+}
+
+.cash-balance-date-field input {
+    width: 100%;
+    min-width: 0;
+    height: 38px;
+    padding: 7px 10px;
+    color: #e8e4d9;
+    color-scheme: dark;
+    background: #1b1b1b;
+    border: 1px solid #484335;
+    border-radius: 6px;
+    font: inherit;
+    font-size: 12px;
+}
+
+.cash-balance-date-field input:focus-visible {
+    outline: 2px solid var(--gold-light);
+    outline-offset: 2px;
+}
+
+.cash-balance-period-presets {
+    display: flex;
+    align-items: flex-end;
+    flex-wrap: nowrap;
+    gap: 8px;
+}
+
+.cash-balance-period-preset {
+    min-height: 36px;
+    padding: 6px 11px;
+    color: #e8e4d9;
+    background: #1b1b1b;
+    border: 1px solid #484335;
+    border-radius: 6px;
+    cursor: pointer;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    transition: color 140ms ease, background 140ms ease, border-color 140ms ease;
+}
+
+.cash-balance-period-preset:hover,
+.cash-balance-period-preset.selected {
+    color: var(--gold-light);
+    border-color: var(--gold);
+}
+
+.cash-balance-period-preset:focus-visible {
+    outline: 2px solid var(--gold-light);
+    outline-offset: 2px;
+}
+
+.cash-balance-period-caption {
+    grid-column: 1 / -1;
+    color: #b7b0a3;
+    font-size: 10px;
+}
+
+.cash-balance-date-error {
+    grid-column: 1 / -1;
+    color: #e89a91;
+    font-size: 11px;
+}
+
+@media (max-width: 560px) {
+    .cash-balance-period-filter {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .cash-balance-period-presets {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 420px) {
+    .cash-balance-period-filter {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .cash-balance-period-label,
+    .cash-balance-period-presets,
+    .cash-balance-period-caption,
+    .cash-balance-date-error {
+        grid-column: 1;
+    }
 }
 
 .dashboard-sales-panel {
@@ -1562,6 +1703,11 @@ body {
     color: #fff;
 }
 
+.sidebar .brand {
+    padding-top: 3px;
+    padding-bottom: 3px;
+}
+
 .brand span,
 .eyebrow,
 .field-hint,
@@ -1702,17 +1848,27 @@ h3,
     border-color: var(--gold);
 }
 
-.sales-view-button.selected,
-.button-primary {
+.sales-view-button.selected {
     color: #17140b;
     background: var(--gold);
     border-color: var(--gold);
 }
 
-.sales-view-button.selected:hover,
-.button-primary:hover {
+.sales-view-button.selected:hover {
     color: #111;
     background: var(--gold-light);
+}
+
+.button-primary {
+    color: #fff;
+    background: var(--green);
+    border: 1px solid var(--green);
+}
+
+.button-primary:hover {
+    color: #fff;
+    background: var(--green-dark);
+    border-color: var(--green-dark);
 }
 
 .sales-date-trigger,
@@ -2290,9 +2446,428 @@ tfoot td,
     color: var(--gold-light);
 }
 
+.delivery-schedule-panel {
+    margin-top: 24px;
+    padding: 22px;
+}
+
+.delivery-schedule-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.delivery-schedule-heading .eyebrow {
+    margin: 0 0 6px;
+}
+
+.delivery-schedule-heading h2 {
+    margin: 0 0 6px;
+    color: #f4f1e8;
+    font-family: Manrope, sans-serif;
+    font-size: 18px;
+}
+
+.delivery-schedule-heading .subtitle {
+    margin: 0;
+    font-size: 12px;
+}
+
+.delivery-schedule-month-nav {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: #f4f1e8;
+    font-size: 13px;
+    text-transform: capitalize;
+}
+
+.calendar-nav-button {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    place-items: center;
+    color: #e8e4d9;
+    background: #1b1b1b;
+    border: 1px solid #484335;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 22px;
+    line-height: 1;
+}
+
+.calendar-nav-button:hover {
+    color: var(--gold-light);
+    border-color: var(--gold);
+}
+
+.delivery-schedule-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) minmax(240px, 0.8fr);
+    gap: 20px;
+}
+
+.delivery-calendar {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 7px;
+}
+
+.delivery-calendar-weekday {
+    padding: 6px 2px;
+    color: #aaa596;
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+}
+
+.delivery-calendar-day {
+    display: flex;
+    min-width: 0;
+    min-height: 112px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+    padding: 9px;
+    color: #f4f1e8;
+    background: #171717;
+    border: 1px solid #34312a;
+    border-radius: 7px;
+    cursor: pointer;
+    text-align: left;
+}
+
+.delivery-calendar-day:hover {
+    border-color: var(--gold);
+}
+
+.delivery-calendar-day.outside-month {
+    color: #716e66;
+    background: #121212;
+}
+
+.delivery-calendar-day.today {
+    border-color: #786331;
+}
+
+.delivery-calendar-day.selected {
+    background: #2a2517;
+    border-color: var(--gold);
+    box-shadow: inset 0 0 0 1px var(--gold);
+}
+
+.delivery-calendar-day-number {
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.delivery-calendar-assignments {
+    display: grid;
+    width: 100%;
+    max-height: 76px;
+    gap: 5px;
+    overflow-y: auto;
+}
+
+.delivery-calendar-assignment {
+    display: flex;
+    min-width: 0;
+    min-height: 25px;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 6px;
+    color: #fff;
+    background: color-mix(in srgb, var(--courier-color) 26%, #171717);
+    border: 1px solid color-mix(in srgb, var(--courier-color) 78%, #fff);
+    border-left: 3px solid var(--courier-color);
+    border-radius: 5px;
+    box-shadow: 0 1px 5px #0006;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.delivery-calendar-assignment-name {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.delivery-calendar-assignment-turn {
+    flex: 0 0 auto;
+    padding: 1px 4px;
+    color: #fff;
+    background: #0006;
+    border-radius: 3px;
+    font-size: 9px;
+    font-weight: 500;
+}
+
+.delivery-day-panel {
+    min-width: 0;
+    padding: 16px;
+    background: #171717;
+    border: 1px solid #34312a;
+    border-radius: 8px;
+}
+
+.delivery-day-panel h3 {
+    margin: 0 0 14px;
+    color: #f4f1e8;
+    font-size: 14px;
+    text-transform: capitalize;
+}
+
+.delivery-schedule-empty {
+    margin: 0 0 16px;
+    color: #aaa596;
+    font-size: 11px;
+}
+
+.delivery-shift-list {
+    display: grid;
+    gap: 8px;
+    padding: 0;
+    margin: 0 0 16px;
+    list-style: none;
+}
+
+.delivery-shift-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 9px;
+    background: color-mix(in srgb, var(--courier-color) 10%, #202020);
+    border: 1px solid color-mix(in srgb, var(--courier-color) 38%, #34312a);
+    border-radius: 6px;
+}
+
+.delivery-shift-period {
+    min-width: 34px;
+    color: var(--courier-color);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.delivery-shift-courier {
+    min-width: 0;
+    flex: 1;
+    overflow-wrap: anywhere;
+    color: var(--courier-color);
+    font-size: 12px;
+}
+
+.delivery-shift-remove {
+    padding: 4px 6px;
+    color: #c9a9a5;
+    background: transparent;
+    border: 1px solid #51413e;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 10px;
+}
+
+.delivery-shift-remove:hover {
+    color: #f1b1aa;
+    border-color: #9c5e56;
+}
+
+.delivery-shift-form {
+    display: grid;
+    gap: 12px;
+}
+
+.delivery-shift-fields {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 100px;
+    gap: 10px;
+}
+
+.delivery-shift-field {
+    display: grid;
+    min-width: 0;
+    gap: 5px;
+    color: #d7d2c8;
+    font-size: 11px;
+}
+
+.delivery-shift-field input {
+    width: 100%;
+    min-width: 0;
+    min-height: 38px;
+    padding: 8px 10px;
+    color: #f4f1e8;
+    color-scheme: dark;
+    background: #202020;
+    border: 1px solid #48443a;
+    border-radius: 6px;
+}
+
+.delivery-shift-field select {
+    width: 100%;
+    min-width: 0;
+    min-height: 38px;
+    padding: 8px 10px;
+    color: #f4f1e8;
+    background: #202020;
+    border: 1px solid #48443a;
+    border-radius: 6px;
+}
+
+.delivery-shift-field input:focus-visible,
+.delivery-shift-field select:focus-visible {
+    border-color: var(--gold);
+    outline: 2px solid #d4af372b;
+}
+
+.delivery-shift-add:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.delivery-courier-registration {
+    overflow: hidden;
+    background: #171717;
+    border: 1px solid #34312a;
+    border-radius: 7px;
+}
+
+.delivery-courier-registration summary {
+    display: flex;
+    min-height: 40px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 11px;
+    color: #e8e4d9;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 600;
+    list-style: none;
+}
+
+.delivery-courier-registration summary::-webkit-details-marker {
+    display: none;
+}
+
+.delivery-courier-registration summary::after {
+    color: var(--gold-light);
+    content: "+";
+    font-size: 16px;
+}
+
+.delivery-courier-registration[open] summary::after {
+    content: "−";
+}
+
+.delivery-courier-registration summary:focus-visible {
+    outline: 2px solid var(--gold-light);
+    outline-offset: -2px;
+}
+
+.delivery-courier-count {
+    margin-left: auto;
+    color: #aaa596;
+    font-size: 10px;
+    font-weight: 400;
+}
+
+.delivery-courier-registration-content {
+    display: grid;
+    gap: 10px;
+    padding: 0 11px 11px;
+}
+
+.delivery-courier-register {
+    min-height: 36px;
+    padding: 7px 10px;
+    font-size: 11px;
+}
+
+.delivery-courier-register:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.delivery-courier-list {
+    display: grid;
+    max-height: 150px;
+    gap: 6px;
+    overflow-y: auto;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+
+.delivery-courier-list li {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 7px 9px;
+    color: #f4f1e8;
+    background: #202020;
+    border: 1px solid #34312a;
+    border-radius: 5px;
+    font-size: 11px;
+}
+
+.delivery-courier-name {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    color: var(--courier-color);
+}
+
+.delivery-courier-list li span {
+    overflow-wrap: anywhere;
+}
+
+.delivery-courier-remove {
+    flex: 0 0 auto;
+    padding: 4px 6px;
+    color: #c9a9a5;
+    background: transparent;
+    border: 1px solid #51413e;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 10px;
+}
+
+.delivery-courier-remove:hover {
+    color: #f1b1aa;
+    border-color: #9c5e56;
+}
+
 @media (max-width: 760px) {
     .weather-panel {
         padding: 16px;
+    }
+
+    .delivery-schedule-panel {
+        padding: 16px;
+    }
+
+    .delivery-schedule-heading {
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    .delivery-schedule-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .delivery-calendar {
+        gap: 5px;
+    }
+
+    .delivery-calendar-day {
+        min-height: 72px;
+        padding: 7px;
     }
 
     .weather-heading {

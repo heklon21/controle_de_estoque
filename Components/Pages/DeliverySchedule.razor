@@ -1,0 +1,356 @@
+@using Microsoft.JSInterop
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<section class="panel delivery-schedule-panel" aria-labelledby="delivery-schedule-title">
+    <header class="delivery-schedule-heading">
+        <div>
+            <p class="eyebrow">OPERAÇÃO</p>
+            <h2 id="delivery-schedule-title">Escala de entregadores</h2>
+            <p class="subtitle">Organize os entregadores por dia e horário.</p>
+        </div>
+        <div class="delivery-schedule-month-nav" aria-label="Navegação do calendário">
+            <button type="button" class="calendar-nav-button" aria-label="Mês anterior" @onclick="() => ChangeMonth(-1)">
+                ‹
+            </button>
+            <strong>@_displayedMonth.ToString("MMMM yyyy", PortugueseCulture)</strong>
+            <button type="button" class="calendar-nav-button" aria-label="Próximo mês" @onclick="() => ChangeMonth(1)">
+                ›
+            </button>
+        </div>
+    </header>
+
+    <div class="delivery-schedule-layout">
+        <div class="delivery-calendar" aria-label="Calendário mensal">
+            @foreach (var weekday in Weekdays)
+            {
+                <span class="delivery-calendar-weekday">@weekday</span>
+            }
+            @foreach (var day in CalendarDays)
+            {
+                var dayShifts = ShiftsFor(day);
+                <button type="button"
+                        class="@GetCalendarDayClass(day)"
+                        aria-label="@GetCalendarDayLabel(day, dayShifts.Count)"
+                        aria-pressed="@(day.Date == _selectedDate.Date)"
+                        @onclick="() => SelectDay(day)">
+                    <span class="delivery-calendar-day-number">@day.Day</span>
+                    @if (dayShifts.Count > 0)
+                    {
+                        <span class="delivery-calendar-assignments">
+                            @foreach (var shift in dayShifts.OrderBy(shift => shift.Turno))
+                            {
+                                <span class="delivery-calendar-assignment"
+                                      style="@GetCourierColorStyle(shift.Courier)"
+                                      title="@($"{shift.Courier} — {shift.Turno}")">
+                                    <span class="delivery-calendar-assignment-name">@shift.Courier</span>
+                                    <span class="delivery-calendar-assignment-turn">@shift.Turno</span>
+                                </span>
+                            }
+                        </span>
+                    }
+                </button>
+            }
+        </div>
+
+        <div class="delivery-day-panel">
+            <h3>@_selectedDate.ToString("dddd, dd 'de' MMMM", PortugueseCulture)</h3>
+            @if (!_isLoaded)
+            {
+                <p class="delivery-schedule-empty">Carregando escala...</p>
+            }
+            else if (SelectedDayShifts.Count == 0)
+            {
+                <p class="delivery-schedule-empty">Nenhum entregador escalado para este dia.</p>
+            }
+            else
+            {
+                <ul class="delivery-shift-list">
+                    @foreach (var shift in SelectedDayShifts)
+                    {
+                        <li class="delivery-shift-item">
+                            <span class="delivery-shift-period">@shift.Turno</span>
+                            <span class="delivery-shift-courier">@shift.Courier</span>
+                            <button type="button"
+                                    style="@GetCourierColorStyle(shift.Courier)"
+                                    class="delivery-shift-remove"
+                                    aria-label="@($"Remover {shift.Courier} da escala")"
+                                    @onclick="() => RemoveShiftAsync(shift.Id)">
+                                Remover
+                            </button>
+                        </li>
+                    }
+                </ul>
+            }
+
+            <div class="delivery-shift-form">
+                <div class="delivery-shift-fields">
+                    <label class="delivery-shift-field">
+                        <span>Entregador</span>
+                        <input @bind="_courierName"
+                               @bind:event="oninput"
+                               list="delivery-courier-options"
+                               maxlength="80"
+                               placeholder="Nome do entregador" />
+                        <datalist id="delivery-courier-options">
+                            @foreach (var courier in _couriers)
+                            {
+                                <option value="@courier"></option>
+                            }
+                        </datalist>
+                    </label>
+                    <label class="delivery-shift-field">
+                        <span>Turno</span>
+                        <select @bind="_shiftTurno">
+                            <option value="Dia">Dia</option>
+                            <option value="Noite">Noite</option>
+                        </select>
+                    </label>
+                </div>
+                <button type="button"
+                        class="button button-primary delivery-shift-add"
+                        disabled="@(!_isLoaded || string.IsNullOrWhiteSpace(_courierName))"
+                        @onclick="AddShiftAsync">
+                    Adicionar à escala
+                </button>
+
+                <details class="delivery-courier-registration">
+                    <summary>
+                        <span>Cadastro de entregadores</span>
+                        <span class="delivery-courier-count">@_couriers.Count cadastrados</span>
+                    </summary>
+                    <div class="delivery-courier-registration-content">
+                        <label class="delivery-shift-field">
+                            <span>Nome do entregador</span>
+                            <input @bind="_newCourierName"
+                                   @bind:event="oninput"
+                                   maxlength="80"
+                                   placeholder="Digite o nome" />
+                        </label>
+                        <button type="button"
+                                class="button button-secondary delivery-courier-register"
+                                disabled="@(!_isLoaded || string.IsNullOrWhiteSpace(_newCourierName))"
+                                @onclick="RegisterCourierAsync">
+                            Cadastrar entregador
+                        </button>
+                        @if (_couriers.Count > 0)
+                        {
+                            <ul class="delivery-courier-list" aria-label="Entregadores cadastrados">
+                                @foreach (var courier in _couriers)
+                                {
+                                    <li>
+                                        <span class="delivery-courier-name" style="@GetCourierColorStyle(courier)">@courier</span>
+                                        <button type="button"
+                                                style="@GetCourierColorStyle(courier)"
+                                                class="delivery-courier-remove"
+                                                aria-label="@($"Remover {courier} do cadastro")"
+                                                @onclick="() => RemoveCourierAsync(courier)">
+                                            Remover
+                                        </button>
+                                    </li>
+                                }
+                            </ul>
+                        }
+                        else
+                        {
+                            <p class="delivery-schedule-empty">Nenhum entregador cadastrado.</p>
+                        }
+                    </div>
+                </details>
+            </div>
+        </div>
+    </div>
+</section>
+
+@code {
+    private static readonly CultureInfo PortugueseCulture = CultureInfo.GetCultureInfo("pt-BR");
+    private static readonly string[] Weekdays = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+    private static readonly string[] CourierColors =
+    [
+        "#71c7ec", "#f28b82", "#81c995", "#c5a3ff", "#ffb86b", "#69d5c7",
+        "#f48fb1", "#d4c76a", "#8da9ff", "#ee9baf", "#a9d477", "#e7a5ef"
+    ];
+
+    private readonly List<DeliveryShift> _shifts = [];
+    private readonly List<string> _couriers = [];
+    private IJSObjectReference? _storageModule;
+    private DateTime _displayedMonth = new(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private DateTime _selectedDate = DateTime.Today;
+    private string _courierName = string.Empty;
+    private string _newCourierName = string.Empty;
+    private string _shiftTurno = "Dia";
+    private bool _isLoaded;
+
+    private IReadOnlyList<DateTime> CalendarDays
+    {
+        get
+        {
+            var firstDay = _displayedMonth.AddDays(-(((int)_displayedMonth.DayOfWeek + 6) % 7));
+            return Enumerable.Range(0, 42).Select(offset => firstDay.AddDays(offset)).ToArray();
+        }
+    }
+
+    private IReadOnlyList<DeliveryShift> SelectedDayShifts =>
+        ShiftsFor(_selectedDate).OrderBy(shift => shift.Turno).ToArray();
+
+    private IReadOnlyDictionary<string, string> CourierColorMap
+    {
+        get
+        {
+            var names = _couriers
+                .Concat(_shifts.Select(shift => shift.Courier))
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(name => name, StringComparer.CurrentCultureIgnoreCase)
+                .ToArray();
+            var colors = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            for (var index = 0; index < names.Length; index++)
+            {
+                var color = index < CourierColors.Length
+                    ? CourierColors[index]
+                    : $"hsl({Math.Round((index * 137.508) % 360)} 72% 68%)";
+                colors[names[index]] = color;
+            }
+
+            return colors;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        _storageModule = await JS.InvokeAsync<IJSObjectReference>("import", "./delivery-schedule.js");
+        var storedShifts = await _storageModule.InvokeAsync<DeliveryShift[]>("load");
+        var storedCouriers = await _storageModule.InvokeAsync<string[]>("loadCouriers");
+        _shifts.AddRange(storedShifts.Where(shift => !string.IsNullOrWhiteSpace(shift.Courier)));
+        _couriers.AddRange(storedCouriers
+            .Where(courier => !string.IsNullOrWhiteSpace(courier))
+            .Select(courier => courier.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(courier => courier, StringComparer.CurrentCultureIgnoreCase));
+        _isLoaded = true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private IReadOnlyList<DeliveryShift> ShiftsFor(DateTime day) =>
+        _shifts.Where(shift => shift.Date.Date == day.Date).ToArray();
+
+    private string GetCalendarDayClass(DateTime day)
+    {
+        var classes = new List<string> { "delivery-calendar-day" };
+        if (day.Month != _displayedMonth.Month)
+        {
+            classes.Add("outside-month");
+        }
+        if (day.Date == _selectedDate.Date)
+        {
+            classes.Add("selected");
+        }
+        if (day.Date == DateTime.Today)
+        {
+            classes.Add("today");
+        }
+
+        return string.Join(' ', classes);
+    }
+
+    private string GetCalendarDayLabel(DateTime day, int shiftCount) =>
+        shiftCount == 0
+            ? day.ToString("dddd, dd 'de' MMMM", PortugueseCulture)
+            : $"{day.ToString("dddd, dd 'de' MMMM", PortugueseCulture)}: {shiftCount} {(shiftCount == 1 ? "entregador escalado" : "entregadores escalados")}";
+
+    private string GetCourierColorStyle(string courier) =>
+        CourierColorMap.TryGetValue(courier, out var color) ? $"--courier-color: {color}" : string.Empty;
+
+    private void SelectDay(DateTime day)
+    {
+        _selectedDate = day.Date;
+        _displayedMonth = new DateTime(day.Year, day.Month, 1);
+    }
+
+    private void ChangeMonth(int offset)
+    {
+        _displayedMonth = _displayedMonth.AddMonths(offset);
+        _selectedDate = _displayedMonth;
+    }
+
+    private async Task AddShiftAsync()
+    {
+        var courier = _courierName.Trim();
+        if (courier.Length == 0)
+        {
+            return;
+        }
+
+        _shifts.Add(new DeliveryShift
+        {
+            Id = Guid.NewGuid(),
+            Date = _selectedDate.Date,
+            Courier = courier,
+            Turno = _shiftTurno
+        });
+        _courierName = string.Empty;
+        await SaveShiftsAsync();
+    }
+
+    private async Task RemoveShiftAsync(Guid shiftId)
+    {
+        _shifts.RemoveAll(shift => shift.Id == shiftId);
+        await SaveShiftsAsync();
+    }
+
+    private async Task RegisterCourierAsync()
+    {
+        var courier = _newCourierName.Trim();
+        if (courier.Length == 0 || _couriers.Contains(courier, StringComparer.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        _couriers.Add(courier);
+        _couriers.Sort(StringComparer.CurrentCultureIgnoreCase);
+        _newCourierName = string.Empty;
+        if (_storageModule is not null)
+        {
+            await _storageModule.InvokeVoidAsync("saveCouriers", _couriers);
+        }
+    }
+
+    private async Task RemoveCourierAsync(string courier)
+    {
+        _couriers.RemoveAll(name => string.Equals(name, courier, StringComparison.OrdinalIgnoreCase));
+        if (_storageModule is not null)
+        {
+            await _storageModule.InvokeVoidAsync("saveCouriers", _couriers);
+        }
+    }
+
+    private async Task SaveShiftsAsync()
+    {
+        if (_storageModule is not null)
+        {
+            await _storageModule.InvokeVoidAsync("save", _shifts);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_storageModule is not null)
+        {
+            await _storageModule.DisposeAsync();
+        }
+    }
+
+    private sealed class DeliveryShift
+    {
+        public Guid Id { get; set; }
+        public DateTime Date { get; set; }
+        public string Courier { get; set; } = string.Empty;
+        public string Turno { get; set; } = "Dia";
+    }
+}

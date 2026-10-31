@@ -1,41 +1,52 @@
 @page "/financeiro"
 
-@inject StockInventory Inventory
-@inject StockMovementService MovementService
-
 <PageTitle>Dashboard Financeiro | Controle de estoque</PageTitle>
 
 <section class="page-heading">
     <div>
         <p class="eyebrow">DASHBOARDS</p>
         <h1>Financeiro</h1>
-        <p class="subtitle">Acompanhe o saldo total em estoque e o CMV.</p>
+        <p class="subtitle">Acompanhe as entradas e saídas financeiras.</p>
     </div>
 </section>
 
 <section class="dashboard-grid" aria-label="Indicadores financeiros">
-    <article id="dashboard-stock-total" class="dashboard-stat">
-        <span class="dashboard-stat-label">Saldo total em estoque</span>
-        <strong class="dashboard-stat-value">@FormatCurrency(Inventory.TotalValue)</strong>
-        <span class="dashboard-stat-caption">Valor dos insumos cadastrados</span>
-    </article>
-    <article id="dashboard-cmv" class="dashboard-stat">
-        <span class="dashboard-stat-label">CMV da semana passada</span>
-        <strong class="dashboard-stat-value">
-            @(PreviousWeekCmv.Percentage is decimal percentage
-                ? $"{percentage.ToString("N2", CultureInfo.GetCultureInfo("pt-BR"))}%"
-                : "—")
-        </strong>
-        <span class="dashboard-stat-caption">
-            @if (PreviousWeekCmv.Percentage is null)
+    <article id="dashboard-cash-balance" class="dashboard-stat">
+        <span class="dashboard-stat-label">Saldo de caixa</span>
+        <strong class="dashboard-stat-value">—</strong>
+        <div class="cash-balance-period-filter">
+            <span class="cash-balance-period-label">Período</span>
+            <div class="cash-balance-date-fields">
+                <div class="cash-balance-date-field">
+                    <label for="cash-balance-start-date">Data inicial</label>
+                    <InputDate id="cash-balance-start-date" @bind-Value="_startDate" />
+                </div>
+                <div class="cash-balance-date-field">
+                    <label for="cash-balance-end-date">Data final</label>
+                    <InputDate id="cash-balance-end-date" @bind-Value="_endDate" />
+                </div>
+            </div>
+            <div class="cash-balance-period-presets" role="group" aria-label="Filtrar saldo de caixa por período">
+                <button class="cash-balance-period-preset @GetMonthPresetClass(previousMonth: false)"
+                        type="button"
+                        aria-pressed="@IsMonthPresetSelected(previousMonth: false)"
+                        @onclick="() => ApplyMonthPreset(previousMonth: false)">
+                    Mês atual
+                </button>
+                <button class="cash-balance-period-preset @GetMonthPresetClass(previousMonth: true)"
+                        type="button"
+                        aria-pressed="@IsMonthPresetSelected(previousMonth: true)"
+                        @onclick="() => ApplyMonthPreset(previousMonth: true)">
+                    Mês anterior
+                </button>
+            </div>
+            <span class="cash-balance-period-caption">@SelectedPeriodCaption</span>
+            @if (!HasValidDateRange)
             {
-                <span>Aguardando compras e faturamento do PDV</span>
+                <span class="cash-balance-date-error" role="alert">A data inicial deve ser anterior ou igual à data final.</span>
             }
-            else
-            {
-                <span>@($"Semana de {PreviousWeekCmv.PeriodStart:dd/MM/yyyy} a {PreviousWeekCmv.PeriodEnd:dd/MM/yyyy}")</span>
-            }
-        </span>
+        </div>
+        <span class="dashboard-stat-caption">Aguardando lançamentos de caixa</span>
     </article>
 </section>
 
@@ -54,9 +65,45 @@
 </section>
 
 @code {
-    private WeeklyCmv PreviousWeekCmv =>
-        MovementService.CalculatePreviousWeekCmv(DateTime.Today, purchases: null, revenue: null);
+    private DateTime? _startDate = new(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private DateTime? _endDate = DateTime.Today;
 
-    private static string FormatCurrency(decimal value) =>
-        value.ToString("C", CultureInfo.GetCultureInfo("pt-BR"));
+    private bool HasValidDateRange =>
+        _startDate is null || _endDate is null || _startDate.Value.Date <= _endDate.Value.Date;
+
+    private string SelectedPeriodCaption
+    {
+        get
+        {
+            if (!HasValidDateRange)
+            {
+                return "Período inválido";
+            }
+
+            return $"Período: {_startDate?.ToString("dd/MM/yyyy") ?? "início"} a {_endDate?.ToString("dd/MM/yyyy") ?? "hoje"}";
+        }
+    }
+
+    private bool IsMonthPresetSelected(bool previousMonth)
+    {
+        var today = DateTime.Today;
+        var currentMonthStart = new DateTime(today.Year, today.Month, 1);
+        var (start, end) = previousMonth
+            ? (currentMonthStart.AddMonths(-1), currentMonthStart.AddDays(-1))
+            : (currentMonthStart, today);
+
+        return _startDate?.Date == start && _endDate?.Date == end;
+    }
+
+    private string GetMonthPresetClass(bool previousMonth) =>
+        IsMonthPresetSelected(previousMonth) ? "selected" : string.Empty;
+
+    private void ApplyMonthPreset(bool previousMonth)
+    {
+        var today = DateTime.Today;
+        var currentMonthStart = new DateTime(today.Year, today.Month, 1);
+        (_startDate, _endDate) = previousMonth
+            ? (currentMonthStart.AddMonths(-1), currentMonthStart.AddDays(-1))
+            : (currentMonthStart, today);
+    }
 }

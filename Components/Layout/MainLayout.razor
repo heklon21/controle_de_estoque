@@ -2,7 +2,9 @@
 
 <div class="app-shell">
     <aside class="sidebar">
-        <a class="brand" href="/">Mhelbeef <span>Smokehouse</span></a>
+        <a class="brand" href="/" aria-label="Mhelbeef Churrasco Defumado - início">
+            <img class="brand-logo" src="images/mhelbeef-logo-white.png" alt="Mhelbeef Churrasco Defumado" />
+        </a>
 
         <nav class="sidebar-nav" aria-label="Menu principal">
             <p class="nav-section-label">MENU PRINCIPAL</p>
@@ -32,10 +34,12 @@
                 <NavLink class="nav-submenu-link" href="/financeiro" Match="NavLinkMatch.All">
                     Financeiro
                 </NavLink>
-                <NavLink class="nav-submenu-link" href="/" Match="NavLinkMatch.All">
+                <NavLink class="nav-submenu-link" href="/vendas" Match="NavLinkMatch.All">
                     Vendas
                 </NavLink>
-                <span class="nav-submenu-link">Operacional</span>
+                <NavLink class="nav-submenu-link" href="/operacional" Match="NavLinkMatch.All">
+                    Operacional
+                </NavLink>
             </div>
             <button class="nav-group-button"
                     type="button"

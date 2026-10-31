@@ -71,7 +71,7 @@
 
     <div class="inventory-column">
         <section class="panel stock-total-filters inventory-filters" aria-label="Filtros dos insumos cadastrados">
-            <div class="stock-filter-fields">
+            <div class="stock-filter-fields stock-total-filter-fields">
                 <div class="field">
                     <label for="items-start-date">Movimentações a partir de</label>
                     <InputDate id="items-start-date" @bind-Value="_startDate" />
@@ -90,7 +90,7 @@
                         }
                     </InputSelect>
                 </div>
-                <div class="field stock-search-field">
+                <div class="field stock-search-field stock-total-search-field">
                     <label for="items-search">Buscar insumo</label>
                     <InputText id="items-search"
                                @bind-Value="_search"
