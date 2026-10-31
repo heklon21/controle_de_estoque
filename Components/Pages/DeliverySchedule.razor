@@ -9,14 +9,36 @@
             <h2 id="delivery-schedule-title">Escala de entregadores</h2>
             <p class="subtitle">Organize os entregadores por dia e horário.</p>
         </div>
-        <div class="delivery-schedule-month-nav" aria-label="Navegação do calendário">
-            <button type="button" class="calendar-nav-button" aria-label="Mês anterior" @onclick="() => ChangeMonth(-1)">
-                ‹
+        <div class="delivery-schedule-controls">
+            <button type="button"
+                    class="delivery-turn-view-toggle"
+                    aria-label="@($"Alternar visualização para o turno {OtherVisibleTurn}")"
+                    aria-pressed="@(_visibleTurn == "Noite")"
+                    @onclick="ToggleVisibleTurn">
+                Turno:
+                <svg class="delivery-turn-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    @if (_visibleTurn == "Dia")
+                    {
+                        <circle cx="12" cy="12" r="4" />
+                        <path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42" />
+                    }
+                    else
+                    {
+                        <path d="M20.2 15.3A8.5 8.5 0 0 1 8.7 3.8 8.5 8.5 0 1 0 20.2 15.3Z" />
+                    }
+                </svg>
+                <strong>@_visibleTurn</strong>
+                <span aria-hidden="true">⇄</span>
             </button>
-            <strong>@_displayedMonth.ToString("MMMM yyyy", PortugueseCulture)</strong>
-            <button type="button" class="calendar-nav-button" aria-label="Próximo mês" @onclick="() => ChangeMonth(1)">
-                ›
-            </button>
+            <div class="delivery-schedule-month-nav" aria-label="Navegação do calendário">
+                <button type="button" class="calendar-nav-button" aria-label="Mês anterior" @onclick="() => ChangeMonth(-1)">
+                    ‹
+                </button>
+                <strong>@_displayedMonth.ToString("MMMM yyyy", PortugueseCulture)</strong>
+                <button type="button" class="calendar-nav-button" aria-label="Próximo mês" @onclick="() => ChangeMonth(1)">
+                    ›
+                </button>
+            </div>
         </div>
     </header>
 
@@ -61,14 +83,14 @@
             }
             else if (SelectedDayShifts.Count == 0)
             {
-                <p class="delivery-schedule-empty">Nenhum entregador escalado para este dia.</p>
+                <p class="delivery-schedule-empty">Nenhum entregador escalado para o turno @_visibleTurn neste dia.</p>
             }
             else
             {
                 <ul class="delivery-shift-list">
                     @foreach (var shift in SelectedDayShifts)
                     {
-                        <li class="delivery-shift-item">
+                        <li class="delivery-shift-item" style="@GetCourierColorStyle(shift.Courier)">
                             <span class="delivery-shift-period">@shift.Turno</span>
                             <span class="delivery-shift-courier">@shift.Courier</span>
                             <button type="button"
@@ -179,7 +201,10 @@
     private string _courierName = string.Empty;
     private string _newCourierName = string.Empty;
     private string _shiftTurno = "Dia";
+    private string _visibleTurn = "Dia";
     private bool _isLoaded;
+
+    private string OtherVisibleTurn => _visibleTurn == "Dia" ? "Noite" : "Dia";
 
     private IReadOnlyList<DateTime> CalendarDays
     {
@@ -191,7 +216,7 @@
     }
 
     private IReadOnlyList<DeliveryShift> SelectedDayShifts =>
-        ShiftsFor(_selectedDate).OrderBy(shift => shift.Turno).ToArray();
+        ShiftsFor(_selectedDate).ToArray();
 
     private IReadOnlyDictionary<string, string> CourierColorMap
     {
@@ -238,7 +263,10 @@
     }
 
     private IReadOnlyList<DeliveryShift> ShiftsFor(DateTime day) =>
-        _shifts.Where(shift => shift.Date.Date == day.Date).ToArray();
+        _shifts
+            .Where(shift => shift.Date.Date == day.Date && shift.Turno == _visibleTurn)
+            .OrderBy(shift => shift.Courier, StringComparer.CurrentCultureIgnoreCase)
+            .ToArray();
 
     private string GetCalendarDayClass(DateTime day)
     {
@@ -266,6 +294,9 @@
 
     private string GetCourierColorStyle(string courier) =>
         CourierColorMap.TryGetValue(courier, out var color) ? $"--courier-color: {color}" : string.Empty;
+
+    private void ToggleVisibleTurn() =>
+        _visibleTurn = OtherVisibleTurn;
 
     private void SelectDay(DateTime day)
     {

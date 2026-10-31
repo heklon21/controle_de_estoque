@@ -2475,6 +2475,54 @@ tfoot td,
     font-size: 12px;
 }
 
+.delivery-schedule-controls {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.delivery-turn-view-toggle {
+    display: inline-flex;
+    min-height: 36px;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 11px;
+    color: #e8e4d9;
+    background: #1b1b1b;
+    border: 1px solid #484335;
+    border-radius: 6px;
+    cursor: pointer;
+    font: inherit;
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+.delivery-turn-view-toggle strong,
+.delivery-turn-view-toggle span {
+    color: var(--gold-light);
+}
+
+.delivery-turn-icon {
+    width: 15px;
+    height: 15px;
+    flex: 0 0 auto;
+    color: var(--gold-light);
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.8;
+}
+
+.delivery-turn-view-toggle:hover {
+    border-color: var(--gold);
+}
+
+.delivery-turn-view-toggle:focus-visible {
+    outline: 2px solid var(--gold-light);
+    outline-offset: 2px;
+}
+
 .delivery-schedule-month-nav {
     display: flex;
     align-items: center;
@@ -2641,9 +2689,11 @@ tfoot td,
     align-items: center;
     gap: 9px;
     padding: 9px;
-    background: color-mix(in srgb, var(--courier-color) 10%, #202020);
-    border: 1px solid color-mix(in srgb, var(--courier-color) 38%, #34312a);
+    background: color-mix(in srgb, var(--courier-color) 26%, #171717);
+    border: 1px solid color-mix(in srgb, var(--courier-color) 78%, #fff);
+    border-left: 3px solid var(--courier-color);
     border-radius: 6px;
+    box-shadow: 0 1px 5px #0006;
 }
 
 .delivery-shift-period {
@@ -2855,6 +2905,12 @@ tfoot td,
     .delivery-schedule-heading {
         flex-direction: column;
         gap: 14px;
+    }
+
+    .delivery-schedule-controls {
+        width: 100%;
+        justify-content: space-between;
+        flex-wrap: wrap;
     }
 
     .delivery-schedule-layout {
