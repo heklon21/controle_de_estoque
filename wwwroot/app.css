@@ -2518,6 +2518,10 @@ tfoot td,
     border-color: var(--gold);
 }
 
+.delivery-agenda-mode-toggle {
+    color: var(--gold-light);
+}
+
 .delivery-turn-view-toggle:focus-visible {
     outline: 2px solid var(--gold-light);
     outline-offset: 2px;
@@ -2655,6 +2659,13 @@ tfoot td,
     font-weight: 500;
 }
 
+.meeting-calendar-assignment {
+    color: #d7ceff;
+    background: #302842;
+    border-color: #9c83d6;
+    border-left-color: #b69af7;
+}
+
 .delivery-day-panel {
     min-width: 0;
     padding: 16px;
@@ -2701,6 +2712,49 @@ tfoot td,
     color: var(--courier-color);
     font-size: 11px;
     font-weight: 700;
+}
+
+.meeting-item {
+    flex-wrap: wrap;
+    color: #d7ceff;
+    background: #302842;
+    border-color: #9c83d6;
+    border-left-color: #b69af7;
+}
+
+.meeting-item .delivery-shift-period {
+    color: #c4afff;
+}
+
+.meeting-item .delivery-shift-remove {
+    margin-left: auto;
+    color: #d7ceff;
+    border-color: #77639f;
+}
+
+.meeting-notes {
+    flex: 0 0 100%;
+    color: #c4bdcf;
+    font-size: 11px;
+    white-space: pre-wrap;
+}
+
+.delivery-shift-field textarea {
+    width: 100%;
+    min-height: 60px;
+    padding: 9px 10px;
+    color: #f4f1e8;
+    background: #111;
+    border: 1px solid #484335;
+    border-radius: 6px;
+    font: inherit;
+    font-size: 12px;
+    resize: vertical;
+}
+
+.delivery-shift-field textarea:focus {
+    border-color: var(--gold);
+    outline: 2px solid #c9a64a33;
 }
 
 .delivery-shift-courier {
@@ -2944,5 +2998,55 @@ tfoot td,
 
     .weather-forecast-list {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+.inventory-filters {
+    padding: 14px 16px;
+}
+
+.inventory-filters .stock-filter-fields {
+    gap: 10px 12px;
+}
+
+.inventory-filters .field {
+    gap: 5px;
+}
+
+.inventory-filters .field label {
+    font-size: 11px;
+}
+
+.inventory-filters .field input,
+.inventory-filters .field select {
+    height: 36px;
+    padding-right: 10px;
+    padding-left: 10px;
+    font-size: 12px;
+}
+
+.inventory-filters .clear-stock-filters {
+    width: fit-content;
+    min-height: 34px;
+    padding: 0 12px;
+    font-size: 11px;
+}
+
+.inventory-filters .stock-filter-hint {
+    margin-top: 8px;
+    font-size: 10px;
+}
+
+.inventory-filters .stock-filter-error {
+    margin-top: 8px;
+}
+
+@media (max-width: 760px) {
+    .inventory-filters {
+        padding: 12px;
+    }
+
+    .inventory-filters .stock-filter-fields {
+        gap: 9px;
     }
 }

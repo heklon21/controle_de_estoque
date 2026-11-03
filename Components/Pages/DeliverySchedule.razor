@@ -5,31 +5,41 @@
 <section class="panel delivery-schedule-panel" aria-labelledby="delivery-schedule-title">
     <header class="delivery-schedule-heading">
         <div>
-            <p class="eyebrow">OPERAÇÃO</p>
-            <h2 id="delivery-schedule-title">Escala de entregadores</h2>
-            <p class="subtitle">Organize os entregadores por dia e horário.</p>
+            <p class="eyebrow">@(_showMeetings ? "COMPROMISSOS" : "OPERAÇÃO")</p>
+            <h2 id="delivery-schedule-title">@(_showMeetings ? "Reuniões e compromissos" : "Escala de entregadores")</h2>
+            <p class="subtitle">@(_showMeetings ? "Organize reuniões e compromissos por data." : "Organize os entregadores por dia e horário.")</p>
         </div>
         <div class="delivery-schedule-controls">
             <button type="button"
-                    class="delivery-turn-view-toggle"
-                    aria-label="@($"Alternar visualização para o turno {OtherVisibleTurn}")"
-                    aria-pressed="@(_visibleTurn == "Noite")"
-                    @onclick="ToggleVisibleTurn">
-                Turno:
-                <svg class="delivery-turn-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    @if (_visibleTurn == "Dia")
-                    {
-                        <circle cx="12" cy="12" r="4" />
-                        <path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42" />
-                    }
-                    else
-                    {
-                        <path d="M20.2 15.3A8.5 8.5 0 0 1 8.7 3.8 8.5 8.5 0 1 0 20.2 15.3Z" />
-                    }
-                </svg>
-                <strong>@_visibleTurn</strong>
+                    class="delivery-turn-view-toggle delivery-agenda-mode-toggle"
+                    aria-label="@(_showMeetings ? "Voltar para agenda de escala de motoboys" : "Trocar para agenda de reuniões e compromissos")"
+                    @onclick="ToggleAgenda">
+                @(_showMeetings ? "Escala de motoboys" : "Reuniões e compromissos")
                 <span aria-hidden="true">⇄</span>
             </button>
+            @if (!_showMeetings)
+            {
+                <button type="button"
+                        class="delivery-turn-view-toggle"
+                        aria-label="@($"Alternar visualização para o turno {OtherVisibleTurn}")"
+                        aria-pressed="@(_visibleTurn == "Noite")"
+                        @onclick="ToggleVisibleTurn">
+                    Turno:
+                    <svg class="delivery-turn-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        @if (_visibleTurn == "Dia")
+                        {
+                            <circle cx="12" cy="12" r="4" />
+                            <path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42" />
+                        }
+                        else
+                        {
+                            <path d="M20.2 15.3A8.5 8.5 0 0 1 8.7 3.8 8.5 8.5 0 1 0 20.2 15.3Z" />
+                        }
+                    </svg>
+                    <strong>@_visibleTurn</strong>
+                    <span aria-hidden="true">⇄</span>
+                </button>
+            }
             <div class="delivery-schedule-month-nav" aria-label="Navegação do calendário">
                 <button type="button" class="calendar-nav-button" aria-label="Mês anterior" @onclick="() => ChangeMonth(-1)">
                     ‹
@@ -50,14 +60,31 @@
             }
             @foreach (var day in CalendarDays)
             {
-                var dayShifts = ShiftsFor(day);
+                IReadOnlyList<DeliveryShift> dayShifts = _showMeetings ? Array.Empty<DeliveryShift>() : ShiftsFor(day);
+                IReadOnlyList<AgendaMeeting> dayMeetings = _showMeetings ? MeetingsFor(day) : Array.Empty<AgendaMeeting>();
                 <button type="button"
-                        class="@GetCalendarDayClass(day)"
-                        aria-label="@GetCalendarDayLabel(day, dayShifts.Count)"
+                        class="@GetCalendarDayClass(day, dayShifts.Count > 0 || dayMeetings.Count > 0)"
+                        aria-label="@(_showMeetings ? GetMeetingDayLabel(day, dayMeetings.Count) : GetCalendarDayLabel(day, dayShifts.Count))"
                         aria-pressed="@(day.Date == _selectedDate.Date)"
                         @onclick="() => SelectDay(day)">
                     <span class="delivery-calendar-day-number">@day.Day</span>
-                    @if (dayShifts.Count > 0)
+                    @if (_showMeetings && dayMeetings.Count > 0)
+                    {
+                        <span class="delivery-calendar-assignments">
+                            @foreach (var meeting in dayMeetings)
+                            {
+                                <span class="delivery-calendar-assignment meeting-calendar-assignment"
+                                      title="@GetMeetingLabel(meeting)">
+                                    @if (meeting.Time.HasValue)
+                                    {
+                                        <span class="delivery-calendar-assignment-turn">@meeting.Time.Value.ToString("HH:mm")</span>
+                                    }
+                                    <span class="delivery-calendar-assignment-name">@meeting.Title</span>
+                                </span>
+                            }
+                        </span>
+                    }
+                    else if (!_showMeetings && dayShifts.Count > 0)
                     {
                         <span class="delivery-calendar-assignments">
                             @foreach (var shift in dayShifts.OrderBy(shift => shift.Turno))
@@ -79,7 +106,67 @@
             <h3>@_selectedDate.ToString("dddd, dd 'de' MMMM", PortugueseCulture)</h3>
             @if (!_isLoaded)
             {
-                <p class="delivery-schedule-empty">Carregando escala...</p>
+                <p class="delivery-schedule-empty">Carregando agenda...</p>
+            }
+            else if (_showMeetings)
+            {
+                @if (SelectedDayMeetings.Count == 0)
+                {
+                    <p class="delivery-schedule-empty">Nenhuma reunião ou compromisso nesta data.</p>
+                }
+                else
+                {
+                    <ul class="delivery-shift-list">
+                        @foreach (var meeting in SelectedDayMeetings)
+                        {
+                            <li class="delivery-shift-item meeting-item">
+                                @if (meeting.Time.HasValue)
+                                {
+                                    <span class="delivery-shift-period">@meeting.Time.Value.ToString("HH:mm")</span>
+                                }
+                                <span class="delivery-shift-courier">@meeting.Title</span>
+                                <button type="button"
+                                        class="delivery-shift-remove"
+                                        aria-label="@($"Remover {meeting.Title} da agenda")"
+                                        @onclick="() => RemoveMeetingAsync(meeting.Id)">
+                                    Remover
+                                </button>
+                                @if (!string.IsNullOrWhiteSpace(meeting.Notes))
+                                {
+                                    <span class="meeting-notes">@meeting.Notes</span>
+                                }
+                            </li>
+                        }
+                    </ul>
+                }
+
+                <div class="delivery-shift-form">
+                    <label class="delivery-shift-field">
+                        <span>Reunião ou compromisso</span>
+                        <input @bind="_meetingTitle"
+                               @bind:event="oninput"
+                               maxlength="100"
+                               placeholder="Ex.: Reunião com fornecedor" />
+                    </label>
+                    <label class="delivery-shift-field">
+                        <span>Horário (opcional)</span>
+                        <input type="time" @bind="_meetingTime" />
+                    </label>
+                    <label class="delivery-shift-field">
+                        <span>Observações (opcional)</span>
+                        <textarea @bind="_meetingNotes"
+                                  @bind:event="oninput"
+                                  maxlength="300"
+                                  rows="2"
+                                  placeholder="Detalhes do compromisso"></textarea>
+                    </label>
+                    <button type="button"
+                            class="button button-primary delivery-shift-add"
+                            disabled="@(!_isLoaded || string.IsNullOrWhiteSpace(_meetingTitle))"
+                            @onclick="AddMeetingAsync">
+                        Adicionar à agenda
+                    </button>
+                </div>
             }
             else if (SelectedDayShifts.Count == 0)
             {
@@ -105,6 +192,8 @@
                 </ul>
             }
 
+            @if (!_showMeetings)
+            {
             <div class="delivery-shift-form">
                 <div class="delivery-shift-fields">
                     <label class="delivery-shift-field">
@@ -180,6 +269,7 @@
                     </div>
                 </details>
             </div>
+            }
         </div>
     </div>
 </section>
@@ -194,6 +284,7 @@
     ];
 
     private readonly List<DeliveryShift> _shifts = [];
+    private readonly List<AgendaMeeting> _meetings = [];
     private readonly List<string> _couriers = [];
     private IJSObjectReference? _storageModule;
     private DateTime _displayedMonth = new(DateTime.Today.Year, DateTime.Today.Month, 1);
@@ -202,6 +293,10 @@
     private string _newCourierName = string.Empty;
     private string _shiftTurno = "Dia";
     private string _visibleTurn = "Dia";
+    private string _meetingTitle = string.Empty;
+    private TimeOnly? _meetingTime;
+    private string _meetingNotes = string.Empty;
+    private bool _showMeetings;
     private bool _isLoaded;
 
     private string OtherVisibleTurn => _visibleTurn == "Dia" ? "Noite" : "Dia";
@@ -217,6 +312,9 @@
 
     private IReadOnlyList<DeliveryShift> SelectedDayShifts =>
         ShiftsFor(_selectedDate).ToArray();
+
+    private IReadOnlyList<AgendaMeeting> SelectedDayMeetings =>
+        MeetingsFor(_selectedDate);
 
     private IReadOnlyDictionary<string, string> CourierColorMap
     {
@@ -252,7 +350,9 @@
         _storageModule = await JS.InvokeAsync<IJSObjectReference>("import", "./delivery-schedule.js");
         var storedShifts = await _storageModule.InvokeAsync<DeliveryShift[]>("load");
         var storedCouriers = await _storageModule.InvokeAsync<string[]>("loadCouriers");
+        var storedMeetings = await _storageModule.InvokeAsync<AgendaMeeting[]>("loadMeetings");
         _shifts.AddRange(storedShifts.Where(shift => !string.IsNullOrWhiteSpace(shift.Courier)));
+        _meetings.AddRange(storedMeetings.Where(meeting => !string.IsNullOrWhiteSpace(meeting.Title)));
         _couriers.AddRange(storedCouriers
             .Where(courier => !string.IsNullOrWhiteSpace(courier))
             .Select(courier => courier.Trim())
@@ -268,7 +368,14 @@
             .OrderBy(shift => shift.Courier, StringComparer.CurrentCultureIgnoreCase)
             .ToArray();
 
-    private string GetCalendarDayClass(DateTime day)
+    private IReadOnlyList<AgendaMeeting> MeetingsFor(DateTime day) =>
+        _meetings
+            .Where(meeting => meeting.Date.Date == day.Date)
+            .OrderBy(meeting => meeting.Time)
+            .ThenBy(meeting => meeting.Title, StringComparer.CurrentCultureIgnoreCase)
+            .ToArray();
+
+    private string GetCalendarDayClass(DateTime day, bool hasItems)
     {
         var classes = new List<string> { "delivery-calendar-day" };
         if (day.Month != _displayedMonth.Month)
@@ -283,6 +390,10 @@
         {
             classes.Add("today");
         }
+        if (hasItems)
+        {
+            classes.Add(_showMeetings ? "has-meetings" : "has-assignments");
+        }
 
         return string.Join(' ', classes);
     }
@@ -292,11 +403,22 @@
             ? day.ToString("dddd, dd 'de' MMMM", PortugueseCulture)
             : $"{day.ToString("dddd, dd 'de' MMMM", PortugueseCulture)}: {shiftCount} {(shiftCount == 1 ? "entregador escalado" : "entregadores escalados")}";
 
+    private string GetMeetingDayLabel(DateTime day, int meetingCount) =>
+        meetingCount == 0
+            ? day.ToString("dddd, dd 'de' MMMM", PortugueseCulture)
+            : $"{day.ToString("dddd, dd 'de' MMMM", PortugueseCulture)}: {meetingCount} {(meetingCount == 1 ? "compromisso" : "compromissos")}";
+
+    private static string GetMeetingLabel(AgendaMeeting meeting) =>
+        meeting.Time.HasValue ? $"{meeting.Time.Value:HH:mm} — {meeting.Title}" : meeting.Title;
+
     private string GetCourierColorStyle(string courier) =>
         CourierColorMap.TryGetValue(courier, out var color) ? $"--courier-color: {color}" : string.Empty;
 
     private void ToggleVisibleTurn() =>
         _visibleTurn = OtherVisibleTurn;
+
+    private void ToggleAgenda() =>
+        _showMeetings = !_showMeetings;
 
     private void SelectDay(DateTime day)
     {
@@ -327,6 +449,34 @@
         });
         _courierName = string.Empty;
         await SaveShiftsAsync();
+    }
+
+    private async Task AddMeetingAsync()
+    {
+        var title = _meetingTitle.Trim();
+        if (title.Length == 0)
+        {
+            return;
+        }
+
+        _meetings.Add(new AgendaMeeting
+        {
+            Id = Guid.NewGuid(),
+            Date = _selectedDate.Date,
+            Title = title,
+            Time = _meetingTime,
+            Notes = _meetingNotes.Trim()
+        });
+        _meetingTitle = string.Empty;
+        _meetingTime = null;
+        _meetingNotes = string.Empty;
+        await SaveMeetingsAsync();
+    }
+
+    private async Task RemoveMeetingAsync(Guid meetingId)
+    {
+        _meetings.RemoveAll(meeting => meeting.Id == meetingId);
+        await SaveMeetingsAsync();
     }
 
     private async Task RemoveShiftAsync(Guid shiftId)
@@ -369,6 +519,14 @@
         }
     }
 
+    private async Task SaveMeetingsAsync()
+    {
+        if (_storageModule is not null)
+        {
+            await _storageModule.InvokeVoidAsync("saveMeetings", _meetings);
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (_storageModule is not null)
@@ -383,5 +541,14 @@
         public DateTime Date { get; set; }
         public string Courier { get; set; } = string.Empty;
         public string Turno { get; set; } = "Dia";
+    }
+
+    private sealed class AgendaMeeting
+    {
+        public Guid Id { get; set; }
+        public DateTime Date { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public TimeOnly? Time { get; set; }
+        public string Notes { get; set; } = string.Empty;
     }
 }

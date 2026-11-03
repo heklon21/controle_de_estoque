@@ -1,5 +1,6 @@
 const storageKey = "controle-estoque.delivery-schedule";
 const couriersStorageKey = "controle-estoque.delivery-couriers";
+const meetingsStorageKey = "controle-estoque.agenda-meetings";
 
 export function load() {
     const stored = localStorage.getItem(storageKey);
@@ -33,4 +34,13 @@ export function loadCouriers() {
 
 export function saveCouriers(couriers) {
     localStorage.setItem(couriersStorageKey, JSON.stringify(couriers));
+}
+
+export function loadMeetings() {
+    const stored = localStorage.getItem(meetingsStorageKey);
+    return stored ? JSON.parse(stored) : [];
+}
+
+export function saveMeetings(meetings) {
+    localStorage.setItem(meetingsStorageKey, JSON.stringify(meetings));
 }
