@@ -1215,6 +1215,10 @@ h1 {
     text-decoration: none;
 }
 
+.stock-total-export {
+    flex: 0 0 auto;
+}
+
 .button {
     min-height: 42px;
     border: 0;
@@ -2610,6 +2614,17 @@ tfoot td,
     box-shadow: inset 0 0 0 1px var(--gold);
 }
 
+.delivery-calendar-day.multi-selected {
+    background: #1d2b29;
+    border-color: #69d5c7;
+    box-shadow: inset 0 0 0 1px #69d5c7;
+}
+
+.delivery-calendar-day:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+}
+
 .delivery-calendar-day-number {
     font-size: 13px;
     font-weight: 700;
@@ -2681,6 +2696,32 @@ tfoot td,
     text-transform: capitalize;
 }
 
+.meeting-multi-day-toggle {
+    margin-bottom: 12px;
+    color: var(--gold-light);
+    background: #2a2517;
+    border-color: var(--gold);
+}
+
+.meeting-multi-day-toggle:hover,
+.meeting-multi-day-toggle[aria-pressed="true"] {
+    color: #fff2bd;
+    background: #403419;
+    border-color: var(--gold-light);
+    box-shadow: 0 0 0 1px #f0d27a33;
+}
+
+.meeting-multi-day-toggle:focus-visible {
+    outline: 2px solid var(--gold-light);
+    outline-offset: 2px;
+}
+
+.meeting-multi-day-summary {
+    margin: -4px 0 14px;
+    color: #69d5c7;
+    font-size: 11px;
+}
+
 .delivery-schedule-empty {
     margin: 0 0 16px;
     color: #aaa596;
@@ -2727,9 +2768,103 @@ tfoot td,
 }
 
 .meeting-item .delivery-shift-remove {
-    margin-left: auto;
     color: #d7ceff;
     border-color: #77639f;
+}
+
+.meeting-actions {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 6px;
+    margin-left: auto;
+}
+
+.delivery-shift-edit,
+.delivery-shift-edit-cancel {
+    padding: 4px 7px;
+    color: var(--gold-light);
+    background: transparent;
+    border: 1px solid #786331;
+    border-radius: 5px;
+    cursor: pointer;
+    font: inherit;
+    font-size: 10px;
+}
+
+.delivery-shift-edit:hover,
+.delivery-shift-edit-cancel:hover {
+    background: #403419;
+    border-color: var(--gold-light);
+}
+
+.delivery-shift-edit:focus-visible,
+.delivery-shift-edit-cancel:focus-visible {
+    outline: 2px solid var(--gold-light);
+    outline-offset: 2px;
+}
+
+.delivery-shift-edit-cancel {
+    min-height: 34px;
+}
+
+.meeting-participant {
+    flex: 0 0 100%;
+    color: #c4afff;
+    font-size: 11px;
+}
+
+.meeting-participant-name {
+    margin-left: 5px;
+    color: var(--partner-color);
+    font-weight: 700;
+}
+
+.partner-hugo {
+    --partner-color: #73bfff;
+}
+
+.partner-enzo {
+    --partner-color: #81c995;
+}
+
+.partner-luca {
+    --partner-color: #ffb86b;
+}
+
+.meeting-participant-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.meeting-participant-option {
+    min-width: 64px;
+    min-height: 36px;
+    padding: 7px 12px;
+    color: var(--partner-color);
+    background: color-mix(in srgb, var(--partner-color) 10%, #171717);
+    border: 1px solid color-mix(in srgb, var(--partner-color) 45%, #34312a);
+    border-radius: 6px;
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+}
+
+.meeting-participant-option:hover {
+    color: #fff;
+    border-color: var(--partner-color);
+}
+
+.meeting-participant-option.selected {
+    color: #fff;
+    background: color-mix(in srgb, var(--partner-color) 28%, #171717);
+    border-color: var(--partner-color);
+    box-shadow: inset 0 0 0 1px var(--partner-color);
+}
+
+.meeting-participant-option:focus-visible {
+    outline: 2px solid var(--partner-color);
+    outline-offset: 2px;
 }
 
 .meeting-notes {
@@ -2737,6 +2872,10 @@ tfoot td,
     color: #c4bdcf;
     font-size: 11px;
     white-space: pre-wrap;
+}
+
+.meeting-notes strong {
+    color: #f0d27a;
 }
 
 .delivery-shift-field textarea {
@@ -3049,4 +3188,77 @@ tfoot td,
     .inventory-filters .stock-filter-fields {
         gap: 9px;
     }
+}
+
+.delivery-turn-view-toggle,
+.calendar-nav-button,
+.sales-view-button,
+.sales-period-button,
+.stock-date-preset,
+.cash-balance-period-preset,
+.delivery-shift-edit,
+.delivery-shift-edit-cancel {
+    color: var(--gold-light);
+    background: #1b1b1b;
+    border-color: #484335;
+    transition: color 140ms ease, background 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.delivery-turn-view-toggle:hover,
+.calendar-nav-button:hover,
+.sales-view-button:hover,
+.sales-period-button:hover,
+.stock-date-preset:hover,
+.cash-balance-period-preset:hover,
+.delivery-shift-edit:hover,
+.delivery-shift-edit-cancel:hover {
+    color: #fff2bd;
+    background: #2a2517;
+    border-color: var(--gold);
+}
+
+.delivery-turn-view-toggle[aria-pressed="true"],
+.meeting-multi-day-toggle[aria-pressed="true"],
+.sales-view-button.selected,
+.sales-period-button.selected,
+.stock-date-preset.selected,
+.cash-balance-period-preset.selected {
+    color: var(--gold-light);
+    background: #2a2517;
+    border-color: var(--gold);
+}
+
+.delivery-turn-view-toggle[aria-pressed="true"]:hover,
+.meeting-multi-day-toggle[aria-pressed="true"]:hover,
+.sales-view-button.selected:hover,
+.sales-period-button.selected:hover,
+.stock-date-preset.selected:hover,
+.cash-balance-period-preset.selected:hover {
+    color: #fff2bd;
+    background: #403419;
+    border-color: var(--gold-light);
+}
+
+.delivery-turn-view-toggle:focus-visible,
+.calendar-nav-button:focus-visible,
+.sales-view-button:focus-visible,
+.sales-period-button:focus-visible,
+.stock-date-preset:focus-visible,
+.cash-balance-period-preset:focus-visible,
+.delivery-shift-edit:focus-visible,
+.delivery-shift-edit-cancel:focus-visible {
+    outline: 2px solid var(--gold-light);
+    outline-offset: 2px;
+}
+
+.delivery-turn-view-toggle:disabled,
+.calendar-nav-button:disabled,
+.sales-view-button:disabled,
+.sales-period-button:disabled,
+.stock-date-preset:disabled,
+.cash-balance-period-preset:disabled,
+.delivery-shift-edit:disabled,
+.delivery-shift-edit-cancel:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
 }

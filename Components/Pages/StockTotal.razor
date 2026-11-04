@@ -1,7 +1,10 @@
 @page "/estoque-total"
 
+@using Microsoft.JSInterop
+@using System.Text
 @inject StockInventory Inventory
 @inject StockMovementService MovementService
+@inject IJSRuntime JS
 
 <PageTitle>Estoque Total</PageTitle>
 
@@ -11,6 +14,12 @@
         <h1>Estoque Total</h1>
         <p class="subtitle">Consulte os insumos ordenados pelo valor total em estoque.</p>
     </div>
+    <button class="button button-secondary stock-total-export"
+            type="button"
+            disabled="@(FilteredItems.Count == 0)"
+            @onclick="ExportFilteredItemsAsync">
+        Exportar CSV
+    </button>
 </section>
 
 <section class="panel stock-total-filters" aria-label="Filtros do estoque">
@@ -152,6 +161,43 @@
     private Guid? _categoryId;
     private string _search = string.Empty;
 
+    private async Task ExportFilteredItemsAsync()
+    {
+        var items = FilteredItems;
+        if (items.Count == 0)
+        {
+            return;
+        }
+
+        var csv = new StringBuilder();
+        csv.AppendLine("Insumo;Categoria;Quantidade;Valor unitário;Valor total");
+        foreach (var item in items)
+        {
+            csv.Append(EscapeCsv(item.Name)).Append(';')
+                .Append(EscapeCsv(item.CategoryName)).Append(';')
+                .Append(item.Quantity.ToString(CultureInfo.InvariantCulture)).Append(';')
+                .Append(item.Value.ToString(CultureInfo.InvariantCulture)).Append(';')
+                .AppendLine((item.Value * item.Quantity).ToString(CultureInfo.InvariantCulture));
+        }
+
+        var module = await JS.InvokeAsync<IJSObjectReference>("import", "./file-download.js");
+        try
+        {
+            var fileName = $"estoque-total-{DateTime.Today:yyyy-MM-dd}.csv";
+            await module.InvokeVoidAsync("downloadFile", fileName, csv.ToString());
+        }
+        finally
+        {
+            await module.DisposeAsync();
+        }
+    }
+
+    private static string EscapeCsv(string value)
+    {
+        var escapedValue = value.Replace("\"", "\"\"", StringComparison.Ordinal);
+        return "\"" + escapedValue + "\"";
+    }
+
     private bool HasFilters =>
         _startDate is not null ||
         _endDate is not null ||
@@ -238,4 +284,5 @@
 
     private static string FormatCurrency(decimal value) =>
         value.ToString("C", CultureInfo.GetCultureInfo("pt-BR"));
+
 }

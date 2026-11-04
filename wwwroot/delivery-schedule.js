@@ -38,7 +38,22 @@ export function saveCouriers(couriers) {
 
 export function loadMeetings() {
     const stored = localStorage.getItem(meetingsStorageKey);
-    return stored ? JSON.parse(stored) : [];
+    if (!stored) {
+        return [];
+    }
+
+    return JSON.parse(stored).map(meeting => {
+        const participants = meeting.participants ?? meeting.Participants;
+        if (Array.isArray(participants)) {
+            return meeting;
+        }
+
+        const legacyParticipant = meeting.participant ?? meeting.Participant;
+        return {
+            ...meeting,
+            participants: legacyParticipant ? [legacyParticipant] : []
+        };
+    });
 }
 
 export function saveMeetings(meetings) {
