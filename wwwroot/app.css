@@ -2486,6 +2486,18 @@ tfoot td,
     gap: 12px;
 }
 
+.delivery-calendar-mode-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.delivery-calendar-mode-tabs .delivery-turn-view-toggle {
+    min-height: 34px;
+    padding: 6px 9px;
+    font-size: 10px;
+}
+
 .delivery-turn-view-toggle {
     display: inline-flex;
     min-height: 36px;
@@ -2681,6 +2693,13 @@ tfoot td,
     border-left-color: #b69af7;
 }
 
+.task-calendar-assignment {
+    color: #c6ead5;
+    background: #20362a;
+    border-color: #69a87d;
+    border-left-color: #81c995;
+}
+
 .delivery-day-panel {
     min-width: 0;
     padding: 16px;
@@ -2761,6 +2780,22 @@ tfoot td,
     background: #302842;
     border-color: #9c83d6;
     border-left-color: #b69af7;
+}
+
+.task-item {
+    color: #c6ead5;
+    background: #20362a;
+    border-color: #497c59;
+    border-left-color: #81c995;
+}
+
+.task-item .delivery-shift-period {
+    color: #81c995;
+}
+
+.task-item .delivery-shift-remove {
+    color: #c6ead5;
+    border-color: #497c59;
 }
 
 .meeting-item .delivery-shift-period {

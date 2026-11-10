@@ -1,6 +1,7 @@
 const storageKey = "controle-estoque.delivery-schedule";
 const couriersStorageKey = "controle-estoque.delivery-couriers";
 const meetingsStorageKey = "controle-estoque.agenda-meetings";
+const tasksStorageKey = "controle-estoque.agenda-tasks";
 
 export function load() {
     const stored = localStorage.getItem(storageKey);
@@ -37,25 +38,37 @@ export function saveCouriers(couriers) {
 }
 
 export function loadMeetings() {
-    const stored = localStorage.getItem(meetingsStorageKey);
-    if (!stored) {
-        return [];
-    }
-
-    return JSON.parse(stored).map(meeting => {
-        const participants = meeting.participants ?? meeting.Participants;
-        if (Array.isArray(participants)) {
-            return meeting;
-        }
-
-        const legacyParticipant = meeting.participant ?? meeting.Participant;
-        return {
-            ...meeting,
-            participants: legacyParticipant ? [legacyParticipant] : []
-        };
-    });
+    return loadAgendaItems(meetingsStorageKey);
 }
 
 export function saveMeetings(meetings) {
     localStorage.setItem(meetingsStorageKey, JSON.stringify(meetings));
+}
+
+export function loadTasks() {
+    return loadAgendaItems(tasksStorageKey);
+}
+
+export function saveTasks(tasks) {
+    localStorage.setItem(tasksStorageKey, JSON.stringify(tasks));
+}
+
+function loadAgendaItems(storageKey) {
+    const stored = localStorage.getItem(storageKey);
+    if (!stored) {
+        return [];
+    }
+
+    return JSON.parse(stored).map(item => {
+        const participants = item.participants ?? item.Participants;
+        if (Array.isArray(participants)) {
+            return item;
+        }
+
+        const legacyParticipant = item.participant ?? item.Participant;
+        return {
+            ...item,
+            participants: legacyParticipant ? [legacyParticipant] : []
+        };
+    });
 }
